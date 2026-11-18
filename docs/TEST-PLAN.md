@@ -14,6 +14,10 @@
 - Sponsorship admins can perform allowed registration and assignment tasks.
 - Finance users can record payments only within their granted permissions.
 - Service-role credentials never appear in client bundles or browser responses.
+- A user with both sponsorship administrator and finance permissions can perform only the actions authorized by those permissions.
+- An unverified sponsor user cannot access a sponsor account or its records.
+- Sponsor verification and sponsor-to-user association changes are restricted to authorized administrators and create audit events.
+- A sponsor cannot access another sponsor's records by changing a URL, request payload, or database identifier.
 
 ## Registration and packages
 - Unpublished packages are not visible to public users.
@@ -22,6 +26,13 @@
 - Concurrent registrations cannot exceed package capacity.
 - Volunteer approval and rejection record actor, timestamp, and reason where required.
 - An invoice is not issued before approval.
+- A sponsor cannot confirm more than one team sponsorship in the same division during one season.
+- A sponsor may have team sponsorships in multiple divisions during the same season.
+- A sponsor cannot confirm more than one banner sponsorship per season, but may have a banner and team sponsorships together.
+- Pending registrations do not consume package capacity.
+- Confirmation reserves capacity atomically; simultaneous confirmation attempts cannot overbook a package.
+- Cancellation and nonpayment release capacity only according to the approved policy.
+- Duplicate submissions and concurrent requests cannot bypass the sponsor's per-division or banner limits.
 
 ## Financial workflows
 - Invoice numbers are unique and never reused after void.

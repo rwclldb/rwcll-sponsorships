@@ -15,6 +15,12 @@
 - Check administrative and finance roles server-side and in database policies.
 - Use private storage buckets and short-lived authorized access for files.
 - Validate sponsor-to-user associations; do not trust a sponsor ID supplied by the browser.
+- Support independently granted, overlapping permissions. A user's authorization must be evaluated for the specific action and record; do not assume that one role excludes another.
+- Require an administrator-verified sponsor-to-user association before allowing sponsor access. Account verification and association changes must be authorized and auditable.
+- Sponsors must not be able to change their own verification status or associate themselves with another sponsor.
+- Enforce sponsor registration limits, package capacity, and inventory assignment rules in the database or trusted server-side database operations.
+- Restrict invoice issuance, payment recording, voids, refunds, and financial adjustments to explicitly authorized users.
+- Require audit records for sponsor verification, registration confirmation, capacity reservation/release, and financial corrections.
 
 ## Financial integrity
 - Record payment actor, timestamp, method, amount, and reference.

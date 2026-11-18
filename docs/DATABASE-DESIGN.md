@@ -30,6 +30,15 @@ This is a conceptual design, not an applied schema. Review it before migrations 
 - Payment totals and invoice balances must be derived consistently from allocations and adjustments.
 - Prevent duplicate registrations where the same sponsor/package/season combination is not allowed.
 - Capacity checks and assignment claims must be transactional to prevent race conditions.
+- A sponsor may have at most one team sponsorship per division per season, while being allowed to sponsor teams in multiple divisions during that season.
+- A sponsor may have at most one banner sponsorship per season, independently of its team sponsorships.
+- Enforce these limits using database constraints or transaction-safe database logic, not only application validation.
+- Pending registrations do not consume package capacity. Confirmed registrations reserve capacity atomically.
+- Define a single, explicit registration state transition that performs confirmation and capacity reservation together. Concurrent confirmations must not exceed package capacity.
+- Sponsor account authorization must be based on an explicit, administrator-verified sponsor-to-user association. Email matching or a client-supplied sponsor identifier alone is insufficient.
+- Keep user permissions independently assignable so a user can hold administrative and finance permissions simultaneously.
+- Preserve issued invoices and original payment records. Represent financial corrections through linked, auditable records or adjustment transactions rather than silently overwriting financial history.
+- Define the conditions under which a confirmed registration releases its reserved capacity before implementing cancellation or nonpayment workflows.
 
 ## Data and storage rules
 - Use integer cents for USD amounts.
@@ -42,4 +51,4 @@ This is a conceptual design, not an applied schema. Review it before migrations 
 Enable RLS for tables exposed to the application. Sponsors may access only their authorized sponsor records. Administrative/finance access must be checked on the server and in database policies as appropriate. Never expose a service-role key to a browser. Audit records should not be directly editable by ordinary users.
 
 ## Before implementation
-Confirm legal entity/document wording, package policies, payment correction rules, and capacity reservation/release rules. Define and test database constraints and RLS policies before building user-facing workflows.
+Confirm legal entity/document wording, package policies, payment correction rules, and capacity reservation/release rules. Define and test database constraints and RLS policies before building user-facing workflows. Define registration state transitions, sponsor verification, and financial correction policy as well.

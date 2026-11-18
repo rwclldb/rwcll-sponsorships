@@ -9,7 +9,8 @@ Provide RWCLL with a reliable workflow for sponsorship registration, approvals, 
 - Sponsorship administrator: review registrations, approve/reject requests, manage packages and assignments, and maintain sponsorship operations.
 - Finance-authorized volunteer: issue/correct invoices as permitted and record/reconcile payments.
 - System administrator: manage access and configuration.
-Roles may overlap for an authorized person; permissions must be explicit.
+- Roles and permissions are not mutually exclusive. An authorized person may be both a sponsorship administrator and finance-authorized volunteer.
+- Sponsor account access must be tied to an administrator-verified business/sponsor association. A user must not gain access merely by supplying a sponsor ID or matching an unverified email address.
 
 ## Registration
 - Support team sponsorships and field/fence banner sponsorships.
@@ -19,6 +20,12 @@ Roles may overlap for an authorized person; permissions must be explicit.
 - Create an invoice after approval.
 - Sponsors do not choose their team or banner location; the league assigns inventory.
 - Preserve a snapshot of the selected package, price, terms, and bill-to details for the registration/invoice record.
+- A sponsor may have no more than one team sponsorship per division per season, but may sponsor teams in multiple divisions during the same season.
+- A sponsor may have no more than one banner sponsorship per season. A banner sponsorship may coexist with team sponsorships.
+- Pending registrations do not reserve package capacity. Capacity is reserved when a registration reaches the confirmed state.
+- Confirmation and capacity reservation must be atomic so concurrent requests cannot exceed capacity.
+- The application must distinguish a submitted/pending request from a confirmed sponsorship. The exact transition rules and the point at which an approved request becomes confirmed must be documented before workflow implementation.
+- Administrators verify sponsor registrations and the business association before granting access to the corresponding sponsor account.
 
 ## Invoices and payments
 - Generate unique, database-controlled invoice numbers; never reuse a number after an invoice is voided.
@@ -29,6 +36,9 @@ Roles may overlap for an authorized person; permissions must be explicit.
 - Derive balances and payment status from invoice and payment records.
 - Corrections, voids, refunds, and overpayments require explicit audited workflows.
 - Do not assert tax deductibility or issue charitable contribution acknowledgments without confirmed legal status and approved wording.
+- Financial permissions must be separately enforceable and may coexist with administrative permissions.
+- Financial corrections must preserve the original issued invoice or transaction and record the correction, reason, actor, and timestamp.
+- The application must represent unpaid balances, unallocated payments, overpayments, voids, refunds, and credits according to an approved financial policy.
 
 ## Artwork and fulfillment
 - Store logo/artwork privately, with version history and review status.

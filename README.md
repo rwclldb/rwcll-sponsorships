@@ -18,9 +18,9 @@ npm run dev
 
 Local services normally use:
 - Next.js: http://localhost:3000
-- Supabase API: http://127.0.0.1:54321
-- Supabase Studio: http://127.0.0.1:54323
-- Supabase database: localhost port 54322
+- Supabase API: http://127.0.0.1:55321
+- Supabase Studio: http://127.0.0.1:55323
+- Supabase database: localhost port 55322
 
 Configure local environment variables using `.env.example` as a guide. Never commit `.env.local`, access tokens, service-role keys, or other secrets.
 

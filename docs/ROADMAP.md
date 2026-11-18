@@ -5,15 +5,16 @@
 - [x] Initialize local Supabase configuration.
 - [x] Install Supabase JS and SSR libraries.
 - [x] Confirm a production build passes.
-- [ ] Confirm `.gitignore` and environment template.
-- [ ] Start local Supabase and verify local services.
-- [ ] Commit the foundation and project documentation.
+- [X] Confirm `.gitignore` and environment template.
+- [X] Start local Supabase and verify local services.
+- [X] Commit the foundation and project documentation.
 
 ## Milestone 1 — Schema and access control
 - Design and implement seasons, packages, sponsors, contacts, profiles, registrations, and approval state.
 - Add constraints, indexes, and RLS policies.
 - Add automated authorization and business-rule tests.
 - Verify clean local reset/replay from migrations.
+- Define registration states and transitions, sponsor verification, and transactional capacity reservation before writing migrations.
 
 ## Milestone 2 — Registration and sponsor portal
 - Public published-package pages.

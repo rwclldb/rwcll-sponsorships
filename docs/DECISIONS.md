@@ -15,18 +15,32 @@
 12. Invoice numbers are database-controlled and never reused after void.
 13. Payment status and balances are derived from transaction records, not a manually editable paid flag.
 
-## To decide before relevant implementation
+## Confirmed business rules
+
+1. **Overlapping permissions:** A person may hold multiple permissions, such as sponsorship administrator and finance-authorized volunteer. Permissions are granted independently and checked explicitly.
+2. **Package capacity:** A registration does not reserve package capacity while pending. Capacity is reserved when the registration is confirmed, using a transaction-safe operation to prevent overbooking.
+3. **Team sponsorship limits:** A sponsor may sponsor at most one team in each division per season. The same sponsor may sponsor teams in different divisions in the same season.
+4. **Banner limit:** A sponsor may receive at most one banner sponsorship per season. A banner sponsorship may coexist with team sponsorships.
+5. **Sponsor verification:** An administrator verifies a sponsor's identity/business association before authorizing the sponsor to access the associated sponsor account.
+6. **Inventory assignment:** The league, not the sponsor, assigns team sponsorships to teams and banner sponsorships to available banner locations.
+7. **Financial history:** Issued invoices and recorded financial transactions must retain an auditable history. Corrections must not silently rewrite the original transaction history.
+
+## Still to decide before implementation
+
 - Actual package names, prices, benefits, and capacities.
-- Official league legal name, address, and approved invoice/receipt wording.
-- Which users may approve registrations, manage inventory, issue invoices, and record payments.
-- Payment terms and due-date policy.
-- Sponsor account verification, recovery, and business association process.
-- When package capacity or inventory is reserved and released.
-- Cancellation, refund, overpayment, and credit policies.
-- Banner dimensions, production/install responsibility, and artwork specifications.
-- Allowed artwork formats and file-size limits.
-- Email provider, sender/domain, hosting, backup, and retention requirements.
-- Whether any two-person review is required for payment corrections/refunds.
+- Official league legal name, billing address, and approved invoice/receipt wording.
+- Which permissions are needed for registration approval, inventory management, invoice issuance, payment recording, and financial corrections.
+- Invoice payment terms, due dates, reminders, and consequences of nonpayment.
+- Exact sponsor verification procedure, including what evidence administrators review and how account access is granted or recovered.
+- When confirmed package reservations expire or are released if payment is not received.
+- Cancellation, invoice-void, refund, overpayment, credit, and payment-correction rules.
+- Whether refunds or financial corrections require a second approver, and any approval thresholds.
+- Banner dimensions, production and installation responsibility, artwork specifications, allowed file formats, and file-size limits.
+- Email provider, sender/domain, hosting, backup, and data-retention requirements.
+
+## Implementation rule
+
+Do not silently invent policy for unresolved items. Use explicit, documented defaults only when approved. Ask the user when a decision affects money, access, legal wording, or irreversible operations.
 
 ## Implementation rule
 Do not silently invent policy for unresolved items. Use explicit, documented defaults only when necessary, and ask the user when a decision affects money, access, legal wording, or irreversible operations.
