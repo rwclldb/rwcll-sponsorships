@@ -24,6 +24,7 @@
 5. **Sponsor verification:** An administrator verifies a sponsor's identity/business association before authorizing the sponsor to access the associated sponsor account.
 6. **Inventory assignment:** The league, not the sponsor, assigns team sponsorships to teams and banner sponsorships to available banner locations.
 7. **Financial history:** Issued invoices and recorded financial transactions must retain an auditable history. Corrections must not silently rewrite the original transaction history.
+8. **Registration confirmation workflow:** Registrations remain pending without reserving package capacity. When an authorized administrator approves a registration, the system must confirm the registration, reserve package capacity, and create the invoice in one database transaction. If capacity reservation or invoice creation fails, the entire transaction must roll back. Unpaid invoices do not automatically cancel confirmed sponsorships or release capacity; an authorized administrator must explicitly take those actions.
 
 ## Still to decide before implementation
 

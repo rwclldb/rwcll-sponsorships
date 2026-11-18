@@ -19,20 +19,35 @@
 - Sponsor verification and sponsor-to-user association changes are restricted to authorized administrators and create audit events.
 - A sponsor cannot access another sponsor's records by changing a URL, request payload, or database identifier.
 
-## Registration and packages
+## Registration, Sponsorship, and Confirmation Rules
 - Unpublished packages are not visible to public users.
-- Package prices and terms are snapshotted at registration.
-- Invalid, closed-season, or over-capacity registrations are rejected appropriately.
-- Concurrent registrations cannot exceed package capacity.
-- Volunteer approval and rejection record actor, timestamp, and reason where required.
-- An invoice is not issued before approval.
-- A sponsor cannot confirm more than one team sponsorship in the same division during one season.
+- Package prices and terms are snapshotted at the time of registration.
+- Registrations for invalid packages, closed seasons, full packages, or otherwise ineligible registrations are rejected according to system rules.
+- Pending registrations do not reserve package capacity and do not generate invoices.
+- Package capacity is reserved only upon successful registration confirmation.
+- Registration confirmation reserves exactly one capacity slot atomically and cannot result in overbooking, even under concurrent or duplicate requests.
+- Concurrent registration submissions, approval attempts, and duplicate requests cannot bypass package-capacity limits.
+- An invoice cannot be created before registration approval and confirmation.
+- Successful registration approval:
+    - Confirms the registration.
+    - Reserves exactly one capacity slot.
+    - Creates exactly one invoice.
+    - Records the responsible administrator and timestamp.
+- Only authorized administrators may approve, confirm, cancel, or otherwise perform registration-management actions, including direct database operations.
+- If package capacity is exhausted, registration confirmation fails without confirming the registration, reserving capacity, or creating an invoice.
+- Registration confirmation is transactional. If invoice creation or any other required step fails, the entire confirmation operation is rolled back and leaves no partial registration confirmation, capacity reservation, or invoice.
+- Duplicate or concurrent confirmation attempts for the same registration cannot create duplicate invoices, duplicate confirmations, or duplicate capacity reservations.
+- Sponsor limits are enforced during confirmation transactions, including concurrent requests, and cannot be bypassed through duplicate submissions, race conditions, or interface-independent operations.
+- A sponsor may not have more than one confirmed team sponsorship within the same division during a single season.
 - A sponsor may have team sponsorships in multiple divisions during the same season.
-- A sponsor cannot confirm more than one banner sponsorship per season, but may have a banner and team sponsorships together.
-- Pending registrations do not consume package capacity.
-- Confirmation reserves capacity atomically; simultaneous confirmation attempts cannot overbook a package.
-- Cancellation and nonpayment release capacity only according to the approved policy.
-- Duplicate submissions and concurrent requests cannot bypass the sponsor's per-division or banner limits.
+- A sponsor may not have more than one confirmed banner sponsorship during a single season.
+- A sponsor may simultaneously hold eligible team sponsorships and a banner sponsorship when all applicable limits are satisfied.
+- Volunteer approval and rejection actions must record the acting user, timestamp, and required reason.
+- Cancellation, nonpayment processing, and capacity release must follow approved business policy and may be performed only by authorized administrators.
+- An unpaid invoice does not automatically cancel a registration or automatically release reserved capacity.
+- Cancellation or capacity-release actions must create the required audit records.
+- Failed confirmation attempts must not leave misleading success audit entries. Any recorded failure events must accurately describe the failed operation.
+
 
 ## Financial workflows
 - Invoice numbers are unique and never reused after void.

@@ -15,17 +15,19 @@ Provide RWCLL with a reliable workflow for sponsorship registration, approvals, 
 ## Registration
 - Support team sponsorships and field/fence banner sponsorships.
 - Packages and prices are fixed and season-specific; no sponsor-defined pricing.
-- Sponsors can register themselves; volunteers can enter registrations on behalf of sponsors.
-- A volunteer must review and approve a registration before it is accepted.
-- Create an invoice after approval.
 - Sponsors do not choose their team or banner location; the league assigns inventory.
 - Preserve a snapshot of the selected package, price, terms, and bill-to details for the registration/invoice record.
 - A sponsor may have no more than one team sponsorship per division per season, but may sponsor teams in multiple divisions during the same season.
 - A sponsor may have no more than one banner sponsorship per season. A banner sponsorship may coexist with team sponsorships.
-- Pending registrations do not reserve package capacity. Capacity is reserved when a registration reaches the confirmed state.
-- Confirmation and capacity reservation must be atomic so concurrent requests cannot exceed capacity.
-- The application must distinguish a submitted/pending request from a confirmed sponsorship. The exact transition rules and the point at which an approved request becomes confirmed must be documented before workflow implementation.
 - Administrators verify sponsor registrations and the business association before granting access to the corresponding sponsor account.
+- Sponsors can register themselves; authorized volunteers can enter registrations on their behalf.
+- An authorized administrator reviews each pending registration and may approve or reject it.
+- A pending registration does not reserve package capacity and does not generate an invoice.
+- Approval must atomically confirm the registration, reserve package capacity, and create the invoice in a single database transaction.
+- If capacity reservation or invoice creation fails, the entire transaction must roll back. The registration must not remain confirmed, capacity must not be partially reserved, and no invoice may be issued by the failed transaction.
+- Concurrent approvals must not exceed package capacity.
+- An unpaid invoice does not automatically cancel a confirmed sponsorship or release its reserved capacity. An authorized administrator must explicitly cancel the sponsorship and release capacity.
+- Record the responsible administrator and timestamp for approval, confirmation, cancellation, and capacity release.
 
 ## Invoices and payments
 - Generate unique, database-controlled invoice numbers; never reuse a number after an invoice is voided.

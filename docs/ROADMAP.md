@@ -9,12 +9,44 @@
 - [X] Start local Supabase and verify local services.
 - [X] Commit the foundation and project documentation.
 
-## Milestone 1 — Schema and access control
-- Design and implement seasons, packages, sponsors, contacts, profiles, registrations, and approval state.
-- Add constraints, indexes, and RLS policies.
-- Add automated authorization and business-rule tests.
-- Verify clean local reset/replay from migrations.
-- Define registration states and transitions, sponsor verification, and transactional capacity reservation before writing migrations.
+## Milestone 1 — Database Schema, Security, and Access Control
+
+1. Finalize and implement the core data model for:
+   - Seasons
+   - Packages
+   - Sponsors
+   - Sponsor contacts
+   - User profiles
+   - Sponsor-user associations
+   - Registrations
+   - Invoices
+   - Audit events
+   - Approval state
+2. Define registration states, approval workflows, sponsor verification requirements, and all permitted state transitions before writing migrations.
+3. Design and implement administrator approval as a single transactional operation that:
+   - Confirms the registration
+   - Reserves package capacity
+   - Creates the invoice
+   - Maintains transactional consistency and rollback guarantees
+4. Add database constraints, indexes, and row-level security (RLS) policies to enforce authorization and business rules.
+5. Define trusted database operations and permission boundaries for each role.
+6. Enforce sponsor-specific limits, capacity rules, and other business constraints correctly under concurrent requests.
+7. Preserve complete registration, invoice, capacity, financial, and security audit history.
+8. Create automated tests covering:
+   - Authorization and permission enforcement
+   - Registration and approval workflows
+   - Business-rule validation
+   - Concurrency safety
+   - Transaction rollback behavior
+   - RLS policy enforcement
+9. Review all migrations, schema changes, constraints, and security policies before application.
+10. Apply migrations in local Supabase using synthetic test data and verify:
+    - Migration correctness
+    - Clean reset/replay from migrations
+    - Authorization boundaries
+    - Concurrency behavior
+    - Transaction rollback behavior
+11. Confirm that local development environments remain isolated from hosted Supabase environments.
 
 ## Milestone 2 — Registration and sponsor portal
 - Public published-package pages.

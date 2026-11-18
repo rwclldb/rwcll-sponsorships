@@ -8,45 +8,36 @@
 - Stack: Next.js App Router, TypeScript, React, Tailwind CSS, Supabase
 - Current branch at foundation setup: `main`
 
-## Non-negotiable safety boundary
-Develop and test locally first. Do not link the CLI to the hosted project or execute hosted migrations, resets, seeds, or deployments without explicit user approval. Explain destructive consequences before any destructive operation. Do not use credentials or data from the Player Evaluations project.
+## Current status
 
-## Current state
-
-- Repository: `rwclldb/rwcll-sponsorships`, branch `main`.
-- Local working path on the current Windows computer: `D:\sandbox\RWCLL\rwcll-sponsorships`. Paths may differ on other computers.
-- Next.js App Router, TypeScript, React, Tailwind CSS, and Supabase JS/SSR libraries are installed.
-- The dashboard UI and RWCLL logo/theme have been implemented. The dashboard is still a visual prototype using sample figures; sponsorship workflows and live database integration are not implemented.
-- A local Supabase development environment has been started using the project-specific ports configured in `supabase/config.toml`. Keep this project separate from Player Evaluations.
-- Local API URL: `http://127.0.0.1:55321`; database port: `55322`; Studio: `http://127.0.0.1:55323`.
-- The Supabase CLI must remain unlinked from the hosted sponsorship project unless the user explicitly approves linking or hosted operations.
-- `npm run build` has passed during UI development; rerun build and other checks after subsequent changes.
-- No sponsorship business schema or workflows have been implemented yet.
-- Confirmed rules include overlapping permissions, administrator verification of sponsor associations, per-division team sponsorship limits, one banner per sponsor per season, and capacity reservation at confirmation.
-- Package details, legal wording, payment terms, cancellation/refund rules, and other operational policies remain to be finalized.
+- The Next.js application scaffold and RWCLL-branded dashboard are in place.
+- Local Supabase is configured on project-specific ports. The local API is `http://127.0.0.1:55321`, the database port is `55322`, and Studio is `http://127.0.0.1:55323`.
+- The local environment template uses placeholders. Never commit `.env.local` or expose service-role credentials.
+- The financial and registration policy is documented in `docs/FINANCIAL-AND-REGISTRATION-POLICY.md` and remains proposed pending league and treasurer review.
+- The registration workflow has been approved for initial implementation: registrations remain pending without consuming capacity; authorized administrator approval atomically confirms the registration, reserves package capacity, and creates the invoice. Any failure rolls back the transaction. Unpaid invoices do not automatically cancel sponsorships or release capacity.
+- Documentation updates are in progress across `docs/DECISIONS.md`, `docs/REQUIREMENTS.md`, `docs/DATABASE-DESIGN.md`, `docs/TEST-PLAN.md`, and `docs/ROADMAP.md`.
 
 ## Next steps
 
-1. Complete documentation and policy decisions.
-2. Refine the data model and registration state transitions.
-3. Design the initial schema and RLS policies.
-4. Review the proposed migration SQL before applying it locally.
-5. Test constraints, permissions, and workflows against synthetic local data.
-6. Implement the application incrementally and verify each milestone.
-7. Obtain explicit approval before any hosted migration or production deployment.
+1. Finish updating this handoff and review all documentation changes.
+2. Run `git diff --check` and inspect `git diff`.
+3. Commit and push the reviewed documentation changes.
+4. Design the initial database schema, constraints, trusted database operations, and RLS policies.
+5. Review the proposed migration SQL before applying it to local Supabase.
+6. Test with synthetic data, including authorization failures, transaction rollback, and concurrent confirmations.
+
+## Safety boundaries
+
+- Develop and test locally first.
+- Do not link the Supabase CLI to the hosted project, apply hosted migrations, reset hosted data, or deploy without explicit approval.
+- Keep the Sponsorship Management Supabase environment separate from the Player Evaluations project.
+- Explain destructive consequences before any destructive local operation.
+- Treat the dashboard's sample figures as demonstration data until real application workflows are implemented.
 
 ## Agreed MVP
 Manage team sponsorships and field/fence banners; season-specific fixed packages; public package pages; sponsor accounts and portal; sponsor self-registration and volunteer-entered registrations; volunteer review/approval; invoices after approval; manually recorded check/Zelle payments; payment allocation and balances; private logo/artwork versioning and approval; league-assigned teams and banner slots; fulfillment tracking; administrative reports and audit history.
 
 No online card processing, automated bank/Zelle reconciliation, public sponsor directory, or historical Google Form/Sheet import in MVP.
-
-## Next steps
-1. Verify generated documentation and environment protections.
-2. Start local Supabase and confirm local-only endpoints.
-3. Create migrations for core entities and role-based access.
-4. Add automated database/RLS tests before building workflows.
-5. Implement registration, sponsor portal, invoices/payments, artwork, assignments, reports, and audit history incrementally.
-6. Complete launch-readiness review. Hosted changes require explicit approval.
 
 ## Working practice
 Make small, verifiable changes. Run lint/build/tests after meaningful changes. Explain the purpose of commands and pause for user output when a check is needed. Keep this handoff updated as decisions and implementation change.
