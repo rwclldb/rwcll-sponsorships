@@ -1,4 +1,5 @@
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { FileDropzone } from "@/components/FileDropzone";
 import { getSeasons } from "@/lib/admin-data";
 import { requireAdmin } from "@/lib/auth";
 import { describeTiers } from "@/lib/discount";
@@ -123,9 +124,9 @@ export default async function SettingsPage(props: PageProps<"/admin/settings">) 
             ? "Using the QR code uploaded here."
             : "Using the built-in RWCLL Zelle QR code. Upload a new one only if it changes."}
         </p>
-        <form action={uploadZelleQr} className="flex flex-wrap items-center gap-2">
-          <input name="qr" type="file" accept="image/*" required className="input max-w-sm text-sm" />
-          <button className="btn-secondary">Replace</button>
+        <form action={uploadZelleQr} className="max-w-md space-y-2">
+          <FileDropzone name="qr" accept="image/*" required prompt="Drag a new QR image here, or click" />
+          <button className="btn-secondary">Replace QR code</button>
         </form>
       </section>
 

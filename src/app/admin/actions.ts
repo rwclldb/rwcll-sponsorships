@@ -216,6 +216,7 @@ export async function uploadLogo(formData: FormData) {
   const id = str(formData, "id");
   const file = formData.get("logo");
   if (!(file instanceof File) || file.size === 0) return;
+  if (file.size > 4 * 1024 * 1024) throw new Error("Logo files must be under 4 MB.");
 
   const { data: reg, error: regError } = await supabase
     .from("registrations")

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PaymentBadge, StatusBadge } from "@/components/Badges";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { FileDropzone } from "@/components/FileDropzone";
 import { paymentStatus } from "@/lib/admin-data";
 import { requireAdmin } from "@/lib/auth";
 import { formatDate, invoiceNumber, METHOD_LABELS, money, todayISO } from "@/lib/format";
@@ -304,10 +305,14 @@ export default async function RegistrationPage(props: PageProps<"/admin/registra
             ) : (
               <p className="text-muted">No logo yet.</p>
             )}
-            <form action={uploadLogo} className="flex flex-wrap items-center gap-2">
+            <form action={uploadLogo} className="space-y-2">
               <input type="hidden" name="id" value={reg.id} />
-              <input name="logo" type="file" required className="input flex-1 text-sm" />
-              <button className="btn-secondary">{reg.logo_path ? "Replace" : "Upload"}</button>
+              <FileDropzone
+                name="logo"
+                required
+                prompt={reg.logo_path ? "Drag a new logo here to replace it, or click" : "Drag the logo here, or click to choose"}
+              />
+              <button className="btn-secondary">{reg.logo_path ? "Replace logo" : "Upload logo"}</button>
             </form>
 
             {pastLogos.length > 0 && (

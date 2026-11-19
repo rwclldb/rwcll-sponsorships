@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { FileDropzone } from "@/components/FileDropzone";
 import { bannerDiscount, describeTiers, discountLabel } from "@/lib/discount";
 import { money } from "@/lib/format";
 import type { Package } from "@/lib/types";
@@ -158,9 +159,14 @@ export function SignupForm({ packages, discountTiers }: { packages: Package[]; d
           <label className="label" htmlFor="logo">
             Logo (optional)
           </label>
-          <input id="logo" name="logo" type="file" className="input text-sm" accept="image/*,.pdf,.ai,.eps,.svg" />
+          <FileDropzone
+            id="logo"
+            name="logo"
+            accept="image/*,.pdf,.ai,.eps,.svg"
+            prompt="Drag your logo here, or click to choose a file"
+          />
           <p className="mt-1 text-sm text-muted">
-            Up to 4 MB. High-resolution or vector files (PDF, AI, EPS, SVG) work best. You can also send it later.
+            High-resolution or vector files (PDF, AI, EPS, SVG) work best. You can also send it later.
           </p>
         </div>
 

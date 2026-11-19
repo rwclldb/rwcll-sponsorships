@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FileDropzone } from "@/components/FileDropzone";
 import { getSeasons } from "@/lib/admin-data";
 import { requireAdmin } from "@/lib/auth";
 import { money, todayISO } from "@/lib/format";
@@ -126,7 +127,7 @@ export default async function NewRegistrationPage(props: PageProps<"/admin/regis
             <label className="label" htmlFor="logo">
               Logo (optional)
             </label>
-            <input id="logo" name="logo" type="file" className="input text-sm" />
+            <FileDropzone id="logo" name="logo" prompt="Drag the logo here, or click to choose" />
           </div>
         </section>
 
