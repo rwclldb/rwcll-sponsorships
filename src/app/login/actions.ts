@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -27,13 +28,20 @@ export async function sendCode(_prev: LoginState, formData: FormData): Promise<L
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+  // If they click the emailed link instead of typing the code, send them back to this same site.
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? (/^(localhost|127\.0\.0\.1)(:|$)/.test(host ?? "") ? "http" : "https");
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: true, emailRedirectTo: `${proto}://${host}/auth/callback` },
+  });
   if (error) {
     console.error("signInWithOtp failed", error);
     return { step: "email", email, error: "We couldn't send a code right now. Please try again in a minute." };
   }
 
-  return { step: "code", email, message: `We emailed a 6-digit code to ${email}.` };
+  return { step: "code", email, message: `We emailed a sign-in code to ${email}. Type the code below, or click the link in the email.` };
 }
 
 export async function verifyCode(_prev: LoginState, formData: FormData): Promise<LoginState> {

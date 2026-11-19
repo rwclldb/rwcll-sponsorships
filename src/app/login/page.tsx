@@ -7,7 +7,11 @@ export const metadata: Metadata = { title: "Admin sign in — RWCLL Sponsorships
 export default async function LoginPage(props: PageProps<"/login">) {
   const { error } = await props.searchParams;
   const initialError =
-    error === "not-admin" ? "That account isn't set up as a sponsorship admin. Ask an existing admin to add you." : undefined;
+    error === "not-admin"
+      ? "That account isn't set up as a sponsorship admin. Ask an existing admin to add you."
+      : error === "link"
+        ? "That sign-in link didn't work (it may have expired, or been opened in a different browser). Request a new code below."
+        : undefined;
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
