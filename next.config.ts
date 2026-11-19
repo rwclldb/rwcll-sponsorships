@@ -1,9 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  experimental: {
+    serverActions: {
+      // Logos are limited to 4 MB in the form; leave room for form overhead.
+      // (Vercel caps request bodies at 4.5 MB.)
+      bodySizeLimit: "4.4mb",
+    },
+  },
   turbopack: {
     rules: {
       "*.css": {
