@@ -11,14 +11,14 @@ export default async function PastSponsorsPage() {
   ]);
   const sponsors = groupSponsors(regs);
   const current = settings?.current_season;
-  const notYetBack = sponsors.filter((s) => !s.seasons.includes(current ?? ""));
+  const notYetBack = sponsors.filter((s) => s.email && !s.seasons.includes(current ?? ""));
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Past sponsors</h1>
-          <p className="text-muted">Everyone who has sponsored in any season, one row per email address.</p>
+          <p className="text-muted">Everyone who has sponsored in any season, one row per email address. The same business can appear twice if it used different emails in different years.</p>
         </div>
         <a href="/admin/export?type=sponsors" className="btn-secondary">
           Download CSV
@@ -57,15 +57,19 @@ export default async function PastSponsorsPage() {
               </tr>
             )}
             {sponsors.map((s) => (
-              <tr key={s.email}>
+              <tr key={s.key}>
                 <td className="font-semibold">{s.company_name}</td>
                 <td>
                   {s.contact_name}
                   <div className="text-muted">
-                    <a href={`mailto:${s.email}`} className="link">
-                      {s.email}
-                    </a>{" "}
-                    · {s.phone}
+                    {s.email ? (
+                      <a href={`mailto:${s.email}`} className="link">
+                        {s.email}
+                      </a>
+                    ) : (
+                      "no email on file"
+                    )}
+                    {s.phone && ` · ${s.phone}`}
                   </div>
                 </td>
                 <td>{s.seasons.join(", ")}</td>

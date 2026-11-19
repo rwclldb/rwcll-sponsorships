@@ -65,9 +65,11 @@ export default async function RegistrationPage(props: PageProps<"/admin/registra
           <a href={`/invoice/${reg.public_token}`} target="_blank" className="btn-secondary">
             Invoice / receipt ↗
           </a>
-          <a href={`mailto:${reg.email}`} className="btn-secondary">
-            Email sponsor
-          </a>
+          {reg.email && (
+            <a href={`mailto:${reg.email}`} className="btn-secondary">
+              Email sponsor
+            </a>
+          )}
         </div>
       </div>
 
