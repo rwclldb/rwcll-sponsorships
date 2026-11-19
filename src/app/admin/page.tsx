@@ -4,6 +4,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { getRegistrations, getSeasons, paymentStatus } from "@/lib/admin-data";
 import { requireAdmin } from "@/lib/auth";
 import { formatDate, money } from "@/lib/format";
+import { getSponsorLinks } from "@/lib/links";
 import { getLogoSources, pastLogosFor } from "@/lib/logos";
 import { copyPastLogos } from "./actions";
 
@@ -26,14 +27,15 @@ export default async function AdminHome(props: PageProps<"/admin">) {
   const filter = typeof sp.filter === "string" ? sp.filter : "";
   const q = typeof sp.q === "string" ? sp.q.trim().toLowerCase() : "";
 
-  const [all, seasons, logoSources] = await Promise.all([
+  const [all, seasons, logoSources, links] = await Promise.all([
     getRegistrations(supabase, season),
     getSeasons(supabase, currentSeason),
     getLogoSources(supabase),
+    getSponsorLinks(supabase),
   ]);
   // Sponsors with no logo this season but one on file from another sign-up.
   const pastLogoIds = new Set(
-    all.filter((r) => !r.logo_path && pastLogosFor(r, logoSources).length > 0).map((r) => r.id),
+    all.filter((r) => !r.logo_path && pastLogosFor(r, logoSources, links).length > 0).map((r) => r.id),
   );
   const copyableCount = all.filter((r) => r.status !== "cancelled" && pastLogoIds.has(r.id)).length;
   const active = all.filter((r) => r.status !== "cancelled");
@@ -62,7 +64,9 @@ export default async function AdminHome(props: PageProps<"/admin">) {
 
   // Count sponsorships per package (division / banner).
   const counts = new Map<string, number>();
-  for (const r of active) for (const i of r.registration_items) counts.set(i.name, (counts.get(i.name) ?? 0) + 1);
+  for (const r of active)
+    for (const i of r.registration_items)
+      if (i.kind !== "discount") counts.set(i.name, (counts.get(i.name) ?? 0) + 1);
   const helpCount = active.filter((r) => r.needs_division_help).length;
 
   const qs = (extra: Record<string, string>) => {
@@ -202,7 +206,10 @@ export default async function AdminHome(props: PageProps<"/admin">) {
                   <div className="text-muted">{r.contact_name}</div>
                 </td>
                 <td>
-                  {r.registration_items.map((i) => i.name).join(", ")}
+                  {r.registration_items
+                    .filter((i) => i.kind !== "discount")
+                    .map((i) => i.name)
+                    .join(", ")}
                   {r.needs_division_help && (
                     <span className="badge ml-1 bg-amber-100 text-amber-900">division undecided</span>
                   )}

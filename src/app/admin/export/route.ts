@@ -1,6 +1,7 @@
 import { getRegistrations, paymentStatus } from "@/lib/admin-data";
 import { requireAdmin } from "@/lib/auth";
 import { invoiceNumber } from "@/lib/format";
+import { getSponsorLinks } from "@/lib/links";
 import { groupSponsors } from "@/lib/sponsors";
 
 function csv(rows: (string | number | null | undefined)[][]) {
@@ -38,11 +39,22 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
 
   if (url.searchParams.get("type") === "sponsors") {
-    const sponsors = groupSponsors(await getRegistrations(supabase));
+    const [regs, links] = await Promise.all([getRegistrations(supabase), getSponsorLinks(supabase)]);
+    const sponsors = groupSponsors(regs, links);
     return download(
       csv([
-        ["Email", "Company", "Contact", "Phone", "Address", "Seasons", "Most recent season"],
-        ...sponsors.map((s) => [s.email, s.company_name, s.contact_name, s.phone, s.address, s.seasons.join(" "), s.seasons[0]]),
+        ["Email", "Other emails", "Company", "Other names", "Contact", "Phone", "Address", "Seasons", "Most recent season"],
+        ...sponsors.map((s) => [
+          s.email,
+          s.emails.filter((e) => e !== s.email).join("; "),
+          s.company_name,
+          s.other_names.join("; "),
+          s.contact_name,
+          s.phone,
+          s.address,
+          s.seasons.join(" "),
+          s.seasons[0],
+        ]),
       ]),
       "rwcll-past-sponsors.csv",
     );
@@ -54,7 +66,7 @@ export async function GET(req: Request) {
     csv([
       [
         "Invoice #", "Signed up", "Status", "Company", "Contact", "Email", "Phone", "Address",
-        "Sponsoring", "Division undecided", "Total", "Paid", "Balance", "Payment status",
+        "Sponsoring", "Division undecided", "Discount", "Total", "Paid", "Balance", "Payment status",
         "Payment details", "Player", "Logo", "Notes",
       ],
       ...regs.map((r) => [
@@ -66,8 +78,9 @@ export async function GET(req: Request) {
         r.email,
         r.phone,
         r.address,
-        r.registration_items.map((i) => i.name).join("; "),
+        r.registration_items.filter((i) => i.kind !== "discount").map((i) => i.name).join("; "),
         r.needs_division_help ? "yes" : "",
+        dollars(-r.registration_items.filter((i) => i.kind === "discount").reduce((s, i) => s + i.price_cents, 0)),
         dollars(r.total_cents),
         dollars(r.paid_cents),
         dollars(r.total_cents - r.paid_cents),

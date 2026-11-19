@@ -1,18 +1,22 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { bannerDiscount, describeTiers, discountLabel } from "@/lib/discount";
 import { money } from "@/lib/format";
 import type { Package } from "@/lib/types";
 import { submitRegistration, type SignupState } from "./actions";
 
-export function SignupForm({ packages }: { packages: Package[] }) {
+export function SignupForm({ packages, discountTiers }: { packages: Package[]; discountTiers: number[] }) {
   const [state, formAction, pending] = useActionState<SignupState, FormData>(submitRegistration, {});
   const v = state.values ?? {};
   const [selected, setSelected] = useState<string[]>([]);
   const [hasPlayer, setHasPlayer] = useState(false);
   const [needsHelp, setNeedsHelp] = useState(false);
 
-  const total = packages.filter((p) => selected.includes(p.id)).reduce((sum, p) => sum + p.price_cents, 0);
+  const chosen = packages.filter((p) => selected.includes(p.id));
+  const discount = bannerDiscount(discountTiers, chosen);
+  const total = chosen.reduce((sum, p) => sum + p.price_cents, 0) - discount;
+  const discountText = describeTiers(discountTiers);
   const teams = packages.filter((p) => p.kind === "team");
   const banners = packages.filter((p) => p.kind === "banner");
 
@@ -86,6 +90,11 @@ export function SignupForm({ packages }: { packages: Package[] }) {
         {banners.length > 0 && (
           <fieldset>
             <legend className="mb-2 font-semibold">Banner</legend>
+            {discountText && (
+              <p className="mb-2 text-sm text-brand-dark">
+                Sponsoring a team too? Save on the banner: {discountText}.
+              </p>
+            )}
             <div className="grid gap-2 sm:grid-cols-2">
               {banners.map((p) => (
                 <PackageOption key={p.id} pkg={p} checked={selected.includes(p.id)} onToggle={toggle} />
@@ -94,6 +103,12 @@ export function SignupForm({ packages }: { packages: Package[] }) {
           </fieldset>
         )}
 
+        {discount > 0 && (
+          <p className="flex justify-between border-t border-line pt-3 text-brand-dark">
+            <span>{discountLabel(chosen)}</span>
+            <span>−{money(discount)}</span>
+          </p>
+        )}
         <p className="flex justify-between border-t border-line pt-3 text-lg font-bold">
           <span>Total</span>
           <span>{money(total)}</span>

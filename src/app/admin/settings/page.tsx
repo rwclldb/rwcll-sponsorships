@@ -1,6 +1,8 @@
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { getSeasons } from "@/lib/admin-data";
 import { requireAdmin } from "@/lib/auth";
+import { describeTiers } from "@/lib/discount";
+import { getBannerTiers } from "@/lib/discount-server";
 import { emailConfigured } from "@/lib/email";
 import { zelleQrUrl } from "@/lib/public-data";
 import type { Package, Settings } from "@/lib/types";
@@ -8,6 +10,7 @@ import {
   addAdmin,
   copyPackages,
   removeAdmin,
+  saveBannerDiscount,
   saveSettings,
   savePackage,
   setMyPassword,
@@ -29,6 +32,8 @@ export default async function SettingsPage(props: PageProps<"/admin/settings">) 
     getSeasons(supabase, currentSeason),
   ]);
   const otherSeasons = seasons.filter((s) => s !== pkgSeason);
+  const tiers = await getBannerTiers(supabase, pkgSeason);
+  const tierDescription = describeTiers(tiers);
 
   return (
     <div className="space-y-6">
@@ -173,6 +178,46 @@ export default async function SettingsPage(props: PageProps<"/admin/settings">) 
             <PackageRow season={pkgSeason} />
           </div>
         </div>
+
+        <form action={saveBannerDiscount} className="space-y-3 border-t border-line pt-4">
+          <input type="hidden" name="season" value={pkgSeason} />
+          <div>
+            <h3 className="font-semibold">Banner discount for team sponsors ({pkgSeason})</h3>
+            <p className="text-sm text-muted">
+              Amount taken off the banner for each team the sponsor also sponsors. The amounts add up. Fill in only
+              the 1st team for one flat discount, or leave everything blank for no discount. The discount never goes
+              below $0 for the banner. Changes apply to new sign-ups and when you add or remove a division on a
+              sponsor.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+            {["1st", "2nd", "3rd", "4th", "5th", "6th"].map((label, i) => (
+              <div key={label}>
+                <label className="label text-xs" htmlFor={`tier-${i}`}>
+                  {label} team ($)
+                </label>
+                <input
+                  id={`tier-${i}`}
+                  name="tier"
+                  inputMode="decimal"
+                  pattern="\$?[0-9,]*(\.[0-9]{1,2})?"
+                  defaultValue={tiers[i] ? (tiers[i] / 100).toFixed(2) : ""}
+                  className="input py-1.5"
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-sm">
+            {tierDescription ? (
+              <>
+                Sponsors see: <span className="text-brand-dark">Save on the banner: {tierDescription}.</span>
+              </>
+            ) : (
+              <span className="text-muted">No banner discount for {pkgSeason}.</span>
+            )}
+          </p>
+          <button className="btn-secondary">Save discount</button>
+        </form>
       </section>
 
       <section className="card space-y-4">

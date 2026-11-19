@@ -34,6 +34,8 @@ export default async function InvoicePage(props: PageProps<"/invoice/[token]">) 
     getSettings(),
   ]);
 
+  // Discount lines go after the sponsorships they apply to.
+  items?.sort((a, b) => Number(a.kind === "discount") - Number(b.kind === "discount"));
   const total = (items ?? []).reduce((sum, i) => sum + i.price_cents, 0);
   const paid = (payments ?? []).reduce((sum, p) => sum + p.amount_cents, 0);
   const balance = total - paid;
@@ -100,10 +102,12 @@ export default async function InvoicePage(props: PageProps<"/invoice/[token]">) 
               {(items ?? []).map((i) => (
                 <tr key={i.id}>
                   <td>
-                    {i.kind === "team" ? "Team sponsorship: " : "Banner sponsorship: "}
+                    {i.kind === "team" ? "Team sponsorship: " : i.kind === "banner" ? "Banner sponsorship: " : ""}
                     {i.name}
                   </td>
-                  <td className="text-right">{money(i.price_cents)}</td>
+                  <td className="text-right">
+                    {i.price_cents < 0 ? `−${money(-i.price_cents)}` : money(i.price_cents)}
+                  </td>
                 </tr>
               ))}
               {reg.needs_division_help && (

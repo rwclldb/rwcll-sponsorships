@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { parseMoney } from "@/lib/format";
+import { syncDiscount } from "@/lib/discount-server";
+import { getSponsorLinks } from "@/lib/links";
 import { copyLogo, getLogoSources, pastLogosFor } from "@/lib/logos";
 
 function str(formData: FormData, name: string, max = 1000) {
@@ -79,6 +81,7 @@ export async function createRegistration(formData: FormData) {
       await supabase.from("registrations").delete().eq("id", reg!.id);
       check(itemsError, "add the sponsorships");
     }
+    await syncDiscount(supabase, reg!.id);
   }
 
   const logo = formData.get("logo");
@@ -112,7 +115,7 @@ export async function copyLogoFrom(formData: FormData) {
 export async function copyPastLogos(formData: FormData) {
   const { supabase } = await requireAdmin();
   const season = str(formData, "season", 50);
-  const [{ data: missing, error }, sources] = await Promise.all([
+  const [{ data: missing, error }, sources, links] = await Promise.all([
     supabase
       .from("registrations")
       .select("id, season, email, company_name, logo_path")
@@ -120,10 +123,11 @@ export async function copyPastLogos(formData: FormData) {
       .is("logo_path", null)
       .neq("status", "cancelled"),
     getLogoSources(supabase),
+    getSponsorLinks(supabase),
   ]);
   check(error, "find sponsors without logos");
   for (const reg of missing ?? []) {
-    const best = pastLogosFor(reg, sources)[0];
+    const best = pastLogosFor(reg, sources, links)[0];
     if (best) await copyLogo(supabase, best.logo_path, reg);
   }
   done();
@@ -188,13 +192,22 @@ export async function addItem(formData: FormData) {
     price_cents: pkg!.price_cents,
   });
   check(error, "add the sponsorship");
+  await syncDiscount(supabase, registrationId);
   done();
 }
 
 export async function removeItem(formData: FormData) {
   const { supabase } = await requireAdmin();
-  const { error } = await supabase.from("registration_items").delete().eq("id", str(formData, "id"));
+  const { data: item, error } = await supabase
+    .from("registration_items")
+    .delete()
+    .eq("id", str(formData, "id"))
+    .select("registration_id, kind")
+    .single();
   check(error, "remove the sponsorship");
+  // Removing a team or banner can change the banner discount. (Removing the discount line itself
+  // leaves it off.)
+  if (item && item.kind !== "discount") await syncDiscount(supabase, item.registration_id);
   done();
 }
 
@@ -360,5 +373,70 @@ export async function setMyPassword(formData: FormData) {
   const { error } = await supabase.auth.updateUser({ password });
   check(error, "change your password");
   redirect("/admin/settings?password=changed");
+}
+
+/** Saves a season's banner discount: amount off for the 1st team, 2nd team, … (blank = none). */
+export async function saveBannerDiscount(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const season = str(formData, "season", 50);
+  const tiers = formData.getAll("tier").map((v) => {
+    const text = String(v).trim();
+    if (!text) return 0;
+    const cents = parseMoney(text);
+    if (cents === null) throw new Error(`"${text}" isn't a valid amount.`);
+    return cents;
+  });
+  while (tiers.length && !tiers[tiers.length - 1]) tiers.pop();
+  const { error } = await supabase
+    .from("season_discounts")
+    .upsert({ season, banner_tiers: tiers, updated_at: new Date().toISOString() });
+  check(error, "save the banner discount");
+  done("/");
+}
+
+// ---------------------------------------------------------------------------
+// Sponsor links (Past sponsors)
+// ---------------------------------------------------------------------------
+
+/** Joins two or more sponsors (by their keys on Past sponsors) into one. */
+export async function linkSponsors(formData: FormData) {
+  const { supabase, email } = await requireAdmin();
+  const keys = [...new Set(formData.getAll("key").map((k) => String(k).trim()).filter(Boolean))];
+  if (keys.length < 2) throw new Error("Tick at least two sponsors to link.");
+  const [target, ...others] = keys;
+
+  for (const key of others) {
+    // Anything already linked under this sponsor moves along with it.
+    const { error: moveError } = await supabase.from("sponsor_links").update({ group_key: target }).eq("group_key", key);
+    check(moveError, "link sponsors");
+    const { error } = await supabase
+      .from("sponsor_links")
+      .upsert({ member_key: key, group_key: target, created_by: email });
+    check(error, "link sponsors");
+  }
+  done();
+}
+
+/** Splits one record back out of a linked sponsor. */
+export async function unlinkSponsor(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const key = str(formData, "key");
+  const { data: own } = await supabase.from("sponsor_links").select("member_key").eq("member_key", key).maybeSingle();
+  if (own) {
+    const { error } = await supabase.from("sponsor_links").delete().eq("member_key", key);
+    check(error, "unlink");
+  } else {
+    // It's the group's main record: hand the group to another member first.
+    const { data: members } = await supabase.from("sponsor_links").select("member_key").eq("group_key", key).limit(1);
+    const next = members?.[0]?.member_key;
+    if (next) {
+      // Remove the new main record's own link first, then point the rest at it.
+      const { error } = await supabase.from("sponsor_links").delete().eq("member_key", next);
+      check(error, "unlink");
+      const { error: moveError } = await supabase.from("sponsor_links").update({ group_key: next }).eq("group_key", key);
+      check(moveError, "unlink");
+    }
+  }
+  done();
 }
 

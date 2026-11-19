@@ -45,7 +45,8 @@ export type RegistrationItem = {
   id: string;
   registration_id: string;
   package_id: string | null;
-  kind: PackageKind;
+  /** "discount" lines have a zero or negative price. */
+  kind: PackageKind | "discount";
   name: string;
   price_cents: number;
 };

@@ -1,12 +1,19 @@
 import { connection } from "next/server";
 import { PublicHeader } from "@/components/PublicHeader";
+import { getBannerTiers } from "@/lib/discount-server";
 import { getActivePackages, getSettings } from "@/lib/public-data";
+import { createServiceClient } from "@/lib/supabase/service";
 import { SignupForm } from "./SignupForm";
 
 export default async function SponsorSignupPage() {
   await connection();
   const settings = await getSettings();
-  const packages = settings.registration_open ? await getActivePackages(settings.current_season) : [];
+  const [packages, tiers] = settings.registration_open
+    ? await Promise.all([
+        getActivePackages(settings.current_season),
+        getBannerTiers(createServiceClient(), settings.current_season),
+      ])
+    : [[], []];
 
   return (
     <>
@@ -19,7 +26,7 @@ export default async function SponsorSignupPage() {
         </p>
 
         {settings.registration_open && packages.length > 0 ? (
-          <SignupForm packages={packages} />
+          <SignupForm packages={packages} discountTiers={tiers} />
         ) : (
           <div className="card mt-6">
             <p className="font-semibold">Sponsor registration is currently closed.</p>

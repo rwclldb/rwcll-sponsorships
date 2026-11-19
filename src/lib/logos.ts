@@ -1,6 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { sameSponsor } from "@/lib/sponsors";
+import { sameSponsor, type SponsorLinks } from "@/lib/sponsors";
 
 export type LogoSource = {
   id: string;
@@ -22,15 +22,18 @@ export async function getLogoSources(supabase: SupabaseClient): Promise<LogoSour
   return data as LogoSource[];
 }
 
-/** Logos from this sponsor's other sign-ups (same email or same company name), newest first. */
+type Match = "email" | "linked" | "name";
+
+/** Logos from this sponsor's other sign-ups (same email, linked, or same company name), newest first. */
 export function pastLogosFor(
   reg: { id: string; email: string; company_name: string },
   sources: LogoSource[],
-): (LogoSource & { match: "email" | "name" })[] {
+  links?: SponsorLinks,
+): (LogoSource & { match: Match })[] {
   return sources
     .filter((s) => s.id !== reg.id)
-    .map((s) => ({ ...s, match: sameSponsor(reg, s) }))
-    .filter((s): s is LogoSource & { match: "email" | "name" } => s.match !== null);
+    .map((s) => ({ ...s, match: sameSponsor(reg, s, links) }))
+    .filter((s): s is LogoSource & { match: Match } => s.match !== null);
 }
 
 /** Copies a stored logo into a sign-up (as its own file) and replaces any logo it had. */

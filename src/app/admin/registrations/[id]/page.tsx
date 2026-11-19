@@ -5,6 +5,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { paymentStatus } from "@/lib/admin-data";
 import { requireAdmin } from "@/lib/auth";
 import { formatDate, invoiceNumber, METHOD_LABELS, money, todayISO } from "@/lib/format";
+import { getSponsorLinks } from "@/lib/links";
 import { getLogoSources, pastLogosFor } from "@/lib/logos";
 import type { Package, Payment, Registration, RegistrationItem } from "@/lib/types";
 import {
@@ -40,7 +41,8 @@ export default async function RegistrationPage(props: PageProps<"/admin/registra
     .returns<Package[]>();
 
   // Logos from this sponsor's other sign-ups, plus short-lived preview links for image files.
-  const pastLogos = pastLogosFor(reg, await getLogoSources(supabase)).slice(0, 6);
+  const [logoSources, links] = await Promise.all([getLogoSources(supabase), getSponsorLinks(supabase)]);
+  const pastLogos = pastLogosFor(reg, logoSources, links).slice(0, 6);
   const previewPaths = [reg.logo_path, ...pastLogos.map((l) => l.logo_path)].filter(
     (p): p is string => !!p && /\.(png|jpe?g|gif|webp|svg)$/i.test(p),
   );
@@ -49,7 +51,10 @@ export default async function RegistrationPage(props: PageProps<"/admin/registra
     : { data: [] };
   const preview = new Map((signed ?? []).filter((s) => s.signedUrl).map((s) => [s.path, s.signedUrl as string]));
 
-  const items = reg.registration_items.sort((a, b) => a.name.localeCompare(b.name));
+  // Sponsorships alphabetically, discount line last.
+  const items = reg.registration_items.sort(
+    (a, b) => Number(a.kind === "discount") - Number(b.kind === "discount") || a.name.localeCompare(b.name),
+  );
   const payments = reg.payments.sort((a, b) => a.received_on.localeCompare(b.received_on));
   const total = items.reduce((s, i) => s + i.price_cents, 0);
   const paid = payments.reduce((s, p) => s + p.amount_cents, 0);
@@ -98,13 +103,23 @@ export default async function RegistrationPage(props: PageProps<"/admin/registra
           <table className="table">
             <tbody>
               {items.map((i) => (
-                <tr key={i.id}>
+                <tr key={i.id} className={i.kind === "discount" ? "text-brand-dark" : undefined}>
                   <td>{i.name}</td>
-                  <td className="text-right">{money(i.price_cents)}</td>
+                  <td className="text-right">
+                    {i.price_cents < 0 ? `−${money(-i.price_cents)}` : money(i.price_cents)}
+                  </td>
                   <td className="w-0 text-right">
                     <form action={removeItem}>
                       <input type="hidden" name="id" value={i.id} />
-                      <ConfirmButton message={`Remove ${i.name} from this sponsor?`}>Remove</ConfirmButton>
+                      <ConfirmButton
+                        message={
+                          i.kind === "discount"
+                            ? "Remove the banner discount for this sponsor? (It comes back if you add or remove a division.)"
+                            : `Remove ${i.name} from this sponsor?`
+                        }
+                      >
+                        Remove
+                      </ConfirmButton>
                     </form>
                   </td>
                 </tr>
@@ -318,7 +333,12 @@ export default async function RegistrationPage(props: PageProps<"/admin/registra
                           {l.season}: {l.company_name}
                         </Link>
                         <div className="text-muted">
-                          Same {l.match === "email" ? "email" : "company name"} ·{" "}
+                          {l.match === "email"
+                            ? "Same email"
+                            : l.match === "linked"
+                              ? "Linked sponsor"
+                              : "Same company name"}{" "}
+                          ·{" "}
                           <a href={`/admin/logo/${l.id}`} target="_blank" className="link">
                             view
                           </a>

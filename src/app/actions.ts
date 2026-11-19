@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { escapeHtml, sendEmail } from "@/lib/email";
+import { bannerDiscount, discountLabel } from "@/lib/discount";
+import { getBannerTiers } from "@/lib/discount-server";
 import { invoiceNumber, money } from "@/lib/format";
 import { getActivePackages, getSettings } from "@/lib/public-data";
 import { siteUrl } from "@/lib/site";
@@ -100,16 +102,20 @@ export async function submitRegistration(_prev: SignupState, formData: FormData)
     return fail("Something went wrong saving your sponsorship. Please try again.");
   }
 
+  const discount = bannerDiscount(await getBannerTiers(db, season), packages);
   if (packages.length > 0) {
-    const { error: itemsError } = await db.from("registration_items").insert(
-      packages.map((p) => ({
+    const { error: itemsError } = await db.from("registration_items").insert([
+      ...packages.map((p) => ({
         registration_id: reg.id,
         package_id: p.id,
         kind: p.kind,
         name: p.name,
         price_cents: p.price_cents,
       })),
-    );
+      ...(discount > 0
+        ? [{ registration_id: reg.id, kind: "discount", name: discountLabel(packages), price_cents: -discount }]
+        : []),
+    ]);
     if (itemsError) {
       console.error("Registration items insert failed", itemsError);
       await db.from("registrations").delete().eq("id", reg.id);
@@ -121,8 +127,10 @@ export async function submitRegistration(_prev: SignupState, formData: FormData)
   if (settings.email_notifications) {
     const base = await siteUrl();
     const invoiceUrl = `${base}/invoice/${reg.public_token}`;
-    const total = packages.reduce((sum, p) => sum + p.price_cents, 0);
-    const lines = packages.map((p) => `<li>${escapeHtml(p.name)} — ${money(p.price_cents)}</li>`).join("");
+    const total = packages.reduce((sum, p) => sum + p.price_cents, 0) - discount;
+    const lines =
+      packages.map((p) => `<li>${escapeHtml(p.name)} — ${money(p.price_cents)}</li>`).join("") +
+      (discount > 0 ? `<li>${escapeHtml(discountLabel(packages))} — −${money(discount)}</li>` : "");
     const helpLine = needsDivisionHelp ? "<li>Team sponsorship, division to be decided</li>" : "";
     const number = invoiceNumber(season, reg.number);
 
