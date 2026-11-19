@@ -9,23 +9,38 @@ export type LoginState = { step: "email" | "code"; email?: string; error?: strin
 
 const ALLOWED_DOMAIN = "@rwcll.org";
 
-export async function sendCode(_prev: LoginState, formData: FormData): Promise<LoginState> {
-  const email = String(formData.get("email") ?? "")
+function emailFrom(formData: FormData) {
+  return String(formData.get("email") ?? "")
     .trim()
     .toLowerCase();
+}
 
-  if (!email.endsWith(ALLOWED_DOMAIN)) {
-    return { step: "email", email, error: `Please use your ${ALLOWED_DOMAIN} email address.` };
-  }
-
+/** Returns an error message if this email can't be an admin, otherwise null. */
+async function adminProblem(email: string) {
+  if (!email.endsWith(ALLOWED_DOMAIN)) return `Please use your ${ALLOWED_DOMAIN} email address.`;
   const { data: admin } = await createServiceClient().from("admins").select("email").eq("email", email).maybeSingle();
-  if (!admin) {
-    return {
-      step: "email",
-      email,
-      error: "That email isn't set up as a sponsorship admin. Ask an existing admin to add you.",
-    };
-  }
+  if (!admin) return "That email isn't set up as a sponsorship admin. Ask an existing admin to add you.";
+  return null;
+}
+
+export async function signInWithPassword(_prev: LoginState, formData: FormData): Promise<LoginState> {
+  const email = emailFrom(formData);
+  const password = String(formData.get("password") ?? "");
+  if (!password) return { step: "email", email, error: "Enter your password, or use the emailed code instead." };
+
+  const problem = await adminProblem(email);
+  if (problem) return { step: "email", email, error: problem };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return { step: "email", email, error: "That email and password don't match." };
+  redirect("/admin");
+}
+
+export async function sendCode(_prev: LoginState, formData: FormData): Promise<LoginState> {
+  const email = emailFrom(formData);
+  const problem = await adminProblem(email);
+  if (problem) return { step: "email", email, error: problem };
 
   const supabase = await createClient();
   // If they click the emailed link instead of typing the code, send them back to this same site.

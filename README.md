@@ -66,6 +66,17 @@ Security model:
 5. **Domain:** in Vercel add `sponsors.rwcll.org`, then add the CNAME record it shows at rwcll.org's DNS provider.
 6. **In the app:** go to Admin → Settings. Upload the Zelle QR code, check prices and payment instructions, add the notification emails, and turn on emails.
 
+## Admin passwords
+
+Admins can sign in with a password or an emailed code. To set someone's first password (or reset a forgotten one) without email:
+
+```powershell
+node --env-file=.env.hosted scripts/set-admin-password.mjs name@rwcll.org   # live site
+node --env-file=.env.local  scripts/set-admin-password.mjs name@rwcll.org   # local
+```
+
+It asks for the password twice and doesn't show what you type. `.env.hosted` holds the live project's URL and secret key (Supabase → Project Settings → API Keys). It's git-ignored, so keep it that way. Once signed in, admins can change their own password in Admin → Settings.
+
 ## Importing old Google Form responses
 
 Download the responses sheet as CSV, then run:

@@ -1,12 +1,16 @@
 "use client";
 
-import { useActionState } from "react";
-import { sendCode, verifyCode, type LoginState } from "./actions";
+import { useActionState, useState } from "react";
+import { sendCode, signInWithPassword, verifyCode, type LoginState } from "./actions";
 
 export function LoginForm({ initialError }: { initialError?: string }) {
+  const [mode, setMode] = useState<"password" | "code">("password");
   const [emailState, emailAction, sending] = useActionState<LoginState, FormData>(sendCode, {
     step: "email",
     error: initialError,
+  });
+  const [passwordState, passwordAction, signingIn] = useActionState<LoginState, FormData>(signInWithPassword, {
+    step: "email",
   });
   const [codeState, codeAction, verifying] = useActionState<LoginState, FormData>(verifyCode, { step: "code" });
 
@@ -37,8 +41,11 @@ export function LoginForm({ initialError }: { initialError?: string }) {
     );
   }
 
+  const state = mode === "password" ? passwordState : emailState;
+  const email = passwordState.email ?? emailState.email;
+
   return (
-    <form action={emailAction} className="space-y-4">
+    <form action={mode === "password" ? passwordAction : emailAction} className="space-y-4">
       <div>
         <label className="label" htmlFor="email">
           RWCLL email
@@ -49,15 +56,49 @@ export function LoginForm({ initialError }: { initialError?: string }) {
           type="email"
           required
           autoFocus
-          defaultValue={emailState.email}
+          autoComplete="username"
+          defaultValue={email}
           placeholder="you@rwcll.org"
           className="input"
         />
       </div>
-      {emailState.error && <p className="text-sm text-red-700">{emailState.error}</p>}
-      <button className="btn w-full" disabled={sending}>
-        {sending ? "Sending…" : "Email me a sign-in code"}
-      </button>
+      {mode === "password" && (
+        <div>
+          <label className="label" htmlFor="password">
+            Password
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            autoComplete="current-password"
+            className="input"
+          />
+        </div>
+      )}
+      {(state.error || (mode === "password" && emailState.error)) && (
+        <p className="text-sm text-red-700">{state.error ?? emailState.error}</p>
+      )}
+      {mode === "password" ? (
+        <>
+          <button className="btn w-full" disabled={signingIn}>
+            {signingIn ? "Signing in…" : "Sign in"}
+          </button>
+          <button type="button" className="link block w-full text-center text-sm" onClick={() => setMode("code")}>
+            Email me a sign-in code instead
+          </button>
+        </>
+      ) : (
+        <>
+          <button className="btn w-full" disabled={sending}>
+            {sending ? "Sending…" : "Email me a sign-in code"}
+          </button>
+          <button type="button" className="link block w-full text-center text-sm" onClick={() => setMode("password")}>
+            Use my password instead
+          </button>
+        </>
+      )}
     </form>
   );
 }

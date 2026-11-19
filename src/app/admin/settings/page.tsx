@@ -10,11 +10,13 @@ import {
   removeAdmin,
   saveSettings,
   savePackage,
+  setMyPassword,
   uploadZelleQr,
 } from "../actions";
 
-export default async function SettingsPage() {
+export default async function SettingsPage(props: PageProps<"/admin/settings">) {
   const { supabase, email: me } = await requireAdmin();
+  const { password: passwordStatus } = await props.searchParams;
   const { data: settings } = await supabase.from("settings").select("*").eq("id", 1).single<Settings>();
   if (!settings) throw new Error("Settings row is missing");
 
@@ -161,9 +163,43 @@ export default async function SettingsPage() {
 
       <section className="card space-y-4">
         <div>
+          <h2 className="text-lg font-bold">My password</h2>
+          <p className="text-sm text-muted">
+            Set a password for {me} so you can sign in without waiting for an emailed code.
+          </p>
+        </div>
+        {passwordStatus === "changed" && (
+          <p className="rounded-md bg-brand/10 p-3 text-sm font-semibold text-brand-dark">Password updated.</p>
+        )}
+        <form action={setMyPassword} className="grid max-w-md gap-3">
+          <input type="hidden" name="username" value={me} autoComplete="username" />
+          <input
+            name="password"
+            type="password"
+            required
+            minLength={10}
+            autoComplete="new-password"
+            placeholder="New password (10+ characters)"
+            className="input"
+          />
+          <input
+            name="confirm"
+            type="password"
+            required
+            minLength={10}
+            autoComplete="new-password"
+            placeholder="Type it again"
+            className="input"
+          />
+          <button className="btn-secondary justify-self-start">Set password</button>
+        </form>
+      </section>
+
+      <section className="card space-y-4">
+        <div>
           <h2 className="text-lg font-bold">Admins</h2>
           <p className="text-sm text-muted">
-            People who can sign in here. They sign in with their @rwcll.org email and a code sent to it.
+            People who can sign in here, with their @rwcll.org email and either a password or an emailed code. Set a new admin&apos;s first password with <code>scripts/set-admin-password.mjs</code> (see README).
           </p>
         </div>
         <ul className="divide-y divide-line">

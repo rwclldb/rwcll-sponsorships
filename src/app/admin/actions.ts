@@ -248,3 +248,14 @@ export async function removeAdmin(formData: FormData) {
   check(error, "remove the admin");
   done();
 }
+
+export async function setMyPassword(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 10) throw new Error("Please use at least 10 characters.");
+  if (password !== String(formData.get("confirm") ?? "")) throw new Error("The passwords didn't match.");
+  const { error } = await supabase.auth.updateUser({ password });
+  check(error, "change your password");
+  redirect("/admin/settings?password=changed");
+}
+
