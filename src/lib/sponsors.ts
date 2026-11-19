@@ -47,3 +47,27 @@ export function groupSponsors(regs: RegistrationRow[]): PastSponsor[] {
   for (const s of byEmail.values()) s.seasons.sort().reverse();
   return [...byEmail.values()].sort((a, b) => a.company_name.localeCompare(b.company_name));
 }
+
+/** "Mayers Jewelers, Inc. (MJ)" → "mayers jewelers" for comparing company names across years. */
+export function normalizeCompany(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/\(.*?\)/g, " ")
+    .replace(/[’']/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\b(the|inc|incorporated|llc|co|corp|corporation|company|ltd)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Whether two sign-ups look like the same sponsor: same email first, else same company name. */
+export function sameSponsor(
+  a: { email: string; company_name: string },
+  b: { email: string; company_name: string },
+): "email" | "name" | null {
+  const ea = a.email.trim().toLowerCase();
+  if (ea && ea === b.email.trim().toLowerCase()) return "email";
+  const na = normalizeCompany(a.company_name);
+  if (na && na === normalizeCompany(b.company_name)) return "name";
+  return null;
+}

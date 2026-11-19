@@ -5,10 +5,12 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { paymentStatus } from "@/lib/admin-data";
 import { requireAdmin } from "@/lib/auth";
 import { formatDate, invoiceNumber, METHOD_LABELS, money, todayISO } from "@/lib/format";
+import { getLogoSources, pastLogosFor } from "@/lib/logos";
 import type { Package, Payment, Registration, RegistrationItem } from "@/lib/types";
 import {
   addItem,
   addPayment,
+  copyLogoFrom,
   deletePayment,
   deleteRegistration,
   removeItem,
@@ -36,6 +38,16 @@ export default async function RegistrationPage(props: PageProps<"/admin/registra
     .eq("season", reg.season)
     .order("sort_order")
     .returns<Package[]>();
+
+  // Logos from this sponsor's other sign-ups, plus short-lived preview links for image files.
+  const pastLogos = pastLogosFor(reg, await getLogoSources(supabase)).slice(0, 6);
+  const previewPaths = [reg.logo_path, ...pastLogos.map((l) => l.logo_path)].filter(
+    (p): p is string => !!p && /\.(png|jpe?g|gif|webp|svg)$/i.test(p),
+  );
+  const { data: signed } = previewPaths.length
+    ? await supabase.storage.from("logos").createSignedUrls(previewPaths, 600)
+    : { data: [] };
+  const preview = new Map((signed ?? []).filter((s) => s.signedUrl).map((s) => [s.path, s.signedUrl as string]));
 
   const items = reg.registration_items.sort((a, b) => a.name.localeCompare(b.name));
   const payments = reg.payments.sort((a, b) => a.received_on.localeCompare(b.received_on));
@@ -261,9 +273,19 @@ export default async function RegistrationPage(props: PageProps<"/admin/registra
           <section className="card space-y-3">
             <h2 className="text-lg font-bold">Logo</h2>
             {reg.logo_path ? (
-              <a href={`/admin/logo/${reg.id}`} target="_blank" className="link">
-                View / download logo ↗
-              </a>
+              <div className="flex items-center gap-3">
+                {preview.get(reg.logo_path) && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={preview.get(reg.logo_path)}
+                    alt=""
+                    className="h-16 w-24 rounded border border-line bg-white object-contain"
+                  />
+                )}
+                <a href={`/admin/logo/${reg.id}`} target="_blank" className="link">
+                  View / download logo ↗
+                </a>
+              </div>
             ) : (
               <p className="text-muted">No logo yet.</p>
             )}
@@ -272,6 +294,55 @@ export default async function RegistrationPage(props: PageProps<"/admin/registra
               <input name="logo" type="file" required className="input flex-1 text-sm" />
               <button className="btn-secondary">{reg.logo_path ? "Replace" : "Upload"}</button>
             </form>
+
+            {pastLogos.length > 0 && (
+              <div className="space-y-2 border-t border-line pt-3">
+                <p className="font-semibold">Logos from other seasons</p>
+                <ul className="space-y-2">
+                  {pastLogos.map((l) => (
+                    <li key={l.id} className="flex flex-wrap items-center gap-3 rounded-md bg-paper p-2">
+                      {preview.get(l.logo_path) ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={preview.get(l.logo_path)}
+                          alt=""
+                          className="h-12 w-20 rounded border border-line bg-white object-contain"
+                        />
+                      ) : (
+                        <span className="flex h-12 w-20 items-center justify-center rounded border border-line bg-white text-xs text-muted uppercase">
+                          {l.logo_path.split(".").pop()}
+                        </span>
+                      )}
+                      <div className="min-w-0 flex-1 text-sm">
+                        <Link href={`/admin/registrations/${l.id}`} className="font-medium hover:underline">
+                          {l.season}: {l.company_name}
+                        </Link>
+                        <div className="text-muted">
+                          Same {l.match === "email" ? "email" : "company name"} ·{" "}
+                          <a href={`/admin/logo/${l.id}`} target="_blank" className="link">
+                            view
+                          </a>
+                        </div>
+                      </div>
+                      <form action={copyLogoFrom}>
+                        <input type="hidden" name="id" value={reg.id} />
+                        <input type="hidden" name="from_id" value={l.id} />
+                        {reg.logo_path ? (
+                          <ConfirmButton
+                            message="Replace this sponsor's current logo with this one?"
+                            className="btn-secondary py-1 text-sm"
+                          >
+                            Use this logo
+                          </ConfirmButton>
+                        ) : (
+                          <button className="btn-secondary py-1 text-sm">Use this logo</button>
+                        )}
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </section>
 
           <section className="card space-y-3">

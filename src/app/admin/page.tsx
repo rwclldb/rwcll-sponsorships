@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { PaymentBadge, StatusBadge } from "@/components/Badges";
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { getRegistrations, getSeasons, paymentStatus } from "@/lib/admin-data";
 import { requireAdmin } from "@/lib/auth";
 import { formatDate, money } from "@/lib/format";
+import { getLogoSources, pastLogosFor } from "@/lib/logos";
+import { copyPastLogos } from "./actions";
 
 const FILTERS = [
   { value: "", label: "All active" },
@@ -23,7 +26,16 @@ export default async function AdminHome(props: PageProps<"/admin">) {
   const filter = typeof sp.filter === "string" ? sp.filter : "";
   const q = typeof sp.q === "string" ? sp.q.trim().toLowerCase() : "";
 
-  const [all, seasons] = await Promise.all([getRegistrations(supabase, season), getSeasons(supabase, currentSeason)]);
+  const [all, seasons, logoSources] = await Promise.all([
+    getRegistrations(supabase, season),
+    getSeasons(supabase, currentSeason),
+    getLogoSources(supabase),
+  ]);
+  // Sponsors with no logo this season but one on file from another sign-up.
+  const pastLogoIds = new Set(
+    all.filter((r) => !r.logo_path && pastLogosFor(r, logoSources).length > 0).map((r) => r.id),
+  );
+  const copyableCount = all.filter((r) => r.status !== "cancelled" && pastLogoIds.has(r.id)).length;
   const active = all.filter((r) => r.status !== "cancelled");
 
   const rows = (filter === "cancelled" ? all.filter((r) => r.status === "cancelled") : active).filter((r) => {
@@ -81,6 +93,9 @@ export default async function AdminHome(props: PageProps<"/admin">) {
           <a href={`/admin/export?season=${encodeURIComponent(season)}`} className="btn-secondary py-1.5">
             Download CSV
           </a>
+          <Link href={`/admin/registrations/new?season=${encodeURIComponent(season)}`} className="btn py-1.5">
+            + Add sponsor
+          </Link>
         </div>
       </div>
 
@@ -136,6 +151,25 @@ export default async function AdminHome(props: PageProps<"/admin">) {
         </form>
       </div>
 
+      {copyableCount > 0 && (
+        <form
+          action={copyPastLogos}
+          className="flex flex-wrap items-center gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm"
+        >
+          <input type="hidden" name="season" value={season} />
+          <span>
+            {copyableCount} sponsor{copyableCount === 1 ? " has" : "s have"} no logo for {season} but sent one in
+            another season.
+          </span>
+          <ConfirmButton
+            message={`Copy the most recent past logo onto ${copyableCount} sponsor${copyableCount === 1 ? "" : "s"}? You can check or change each one on the sponsor's page.`}
+            className="btn-secondary py-1 text-sm"
+          >
+            Use past logos
+          </ConfirmButton>
+        </form>
+      )}
+
       <div className="card overflow-x-auto p-0 sm:p-0">
         <table className="table">
           <thead>
@@ -180,7 +214,15 @@ export default async function AdminHome(props: PageProps<"/admin">) {
                 <td>
                   <StatusBadge status={r.status} />
                 </td>
-                <td>{r.logo_path ? "✓" : <span className="text-muted">—</span>}</td>
+                <td>
+                  {r.logo_path ? (
+                    "✓"
+                  ) : pastLogoIds.has(r.id) ? (
+                    <span className="badge bg-sky-100 text-sky-900">past logo available</span>
+                  ) : (
+                    <span className="text-muted">—</span>
+                  )}
+                </td>
                 <td className="whitespace-nowrap text-muted">{formatDate(r.created_at)}</td>
               </tr>
             ))}

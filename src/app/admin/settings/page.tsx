@@ -16,17 +16,19 @@ import {
 
 export default async function SettingsPage(props: PageProps<"/admin/settings">) {
   const { supabase, email: me } = await requireAdmin();
-  const { password: passwordStatus } = await props.searchParams;
+  const { password: passwordStatus, season: seasonParam } = await props.searchParams;
   const { data: settings } = await supabase.from("settings").select("*").eq("id", 1).single<Settings>();
   if (!settings) throw new Error("Settings row is missing");
 
-  const season = settings.current_season;
+  const currentSeason = settings.current_season;
+  // Packages can be viewed/edited for any season (past years had different prices).
+  const pkgSeason = (typeof seasonParam === "string" && seasonParam.trim()) || currentSeason;
   const [{ data: packages }, { data: admins }, seasons] = await Promise.all([
-    supabase.from("packages").select("*").eq("season", season).order("sort_order").returns<Package[]>(),
+    supabase.from("packages").select("*").eq("season", pkgSeason).order("sort_order").returns<Package[]>(),
     supabase.from("admins").select("email").order("email"),
-    getSeasons(supabase, season),
+    getSeasons(supabase, currentSeason),
   ]);
-  const otherSeasons = seasons.filter((s) => s !== season);
+  const otherSeasons = seasons.filter((s) => s !== pkgSeason);
 
   return (
     <div className="space-y-6">
@@ -42,7 +44,7 @@ export default async function SettingsPage(props: PageProps<"/admin/settings">) 
             <input
               id="current_season"
               name="current_season"
-              defaultValue={season}
+              defaultValue={currentSeason}
               required
               className="input"
             />
@@ -122,18 +124,30 @@ export default async function SettingsPage(props: PageProps<"/admin/settings">) 
         </form>
       </section>
 
-      <section className="card space-y-4">
-        <div>
-          <h2 className="text-lg font-bold">{season} packages and prices</h2>
-          <p className="text-sm text-muted">
-            Changing a price only affects new sign-ups. Untick &quot;Active&quot; to hide a package from the form.
-          </p>
+      <section id="packages" className="card space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold">{pkgSeason} packages and prices</h2>
+            <p className="text-sm text-muted">
+              {pkgSeason === currentSeason
+                ? "Changing a price only affects new sign-ups. Untick \"Active\" to hide a package from the form."
+                : "A past season. These prices are used when you add a sponsor for that year."}
+            </p>
+          </div>
+          <form className="flex items-center gap-2">
+            <select name="season" defaultValue={pkgSeason} className="input w-auto py-1.5">
+              {[...new Set([pkgSeason, ...seasons])].map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+            <button className="btn-secondary py-1.5">Show</button>
+          </form>
         </div>
 
         {(packages ?? []).length === 0 && otherSeasons.length > 0 && (
           <form action={copyPackages} className="flex flex-wrap items-center gap-2 rounded-md bg-amber-50 p-3">
-            <input type="hidden" name="to_season" value={season} />
-            <span>No packages for {season} yet. Copy them from</span>
+            <input type="hidden" name="to_season" value={pkgSeason} />
+            <span>No packages for {pkgSeason} yet. Copy them from</span>
             <select name="from_season" className="input w-auto py-1.5">
               {otherSeasons.map((s) => (
                 <option key={s}>{s}</option>
@@ -154,9 +168,9 @@ export default async function SettingsPage(props: PageProps<"/admin/settings">) 
               <span />
             </div>
             {(packages ?? []).map((p) => (
-              <PackageRow key={p.id} pkg={p} season={season} />
+              <PackageRow key={p.id} pkg={p} season={pkgSeason} />
             ))}
-            <PackageRow season={season} />
+            <PackageRow season={pkgSeason} />
           </div>
         </div>
       </section>

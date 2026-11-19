@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { parseMoney } from "@/lib/format";
+import { copyLogo, getLogoSources, pastLogosFor } from "@/lib/logos";
 
 function str(formData: FormData, name: string, max = 1000) {
   return String(formData.get(name) ?? "")
@@ -25,6 +26,108 @@ function check(error: { message: string } | null, what: string) {
 // ---------------------------------------------------------------------------
 // Registrations
 // ---------------------------------------------------------------------------
+
+/** Admin-entered sign-up for any season (including past ones not in an upload). */
+export async function createRegistration(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const season = str(formData, "season", 50);
+  const company = str(formData, "company_name", 200);
+  if (!season || !company) throw new Error("Season and company name are required.");
+
+  const packageIds = formData.getAll("package").map(String);
+  const { data: packages, error: pkgError } = packageIds.length
+    ? await supabase.from("packages").select("id, kind, name, price_cents").eq("season", season).in("id", packageIds)
+    : { data: [], error: null };
+  check(pkgError, "read packages");
+
+  // Signed-up date: noon Pacific on the chosen day (or now).
+  const date = str(formData, "signed_up_on");
+  const createdAt = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T20:00:00Z`).toISOString() : undefined;
+  const status = str(formData, "status");
+
+  const { data: reg, error } = await supabase
+    .from("registrations")
+    .insert({
+      season,
+      created_at: createdAt,
+      company_name: company,
+      contact_name: str(formData, "contact_name", 200),
+      email: str(formData, "email", 200).toLowerCase(),
+      phone: str(formData, "phone", 50),
+      address: str(formData, "address", 500),
+      player_info: str(formData, "player_info", 300) || null,
+      needs_division_help: formData.get("needs_division_help") === "on",
+      status: ["new", "confirmed", "cancelled"].includes(status) ? status : "confirmed",
+      imported: formData.get("payment_untracked") === "on",
+      notes: str(formData, "notes", 5000) || null,
+    })
+    .select("id")
+    .single();
+  check(error, "add the sponsor");
+
+  if (packages?.length) {
+    const { error: itemsError } = await supabase.from("registration_items").insert(
+      packages.map((p) => ({
+        registration_id: reg!.id,
+        package_id: p.id,
+        kind: p.kind,
+        name: p.name,
+        price_cents: p.price_cents,
+      })),
+    );
+    if (itemsError) {
+      await supabase.from("registrations").delete().eq("id", reg!.id);
+      check(itemsError, "add the sponsorships");
+    }
+  }
+
+  const logo = formData.get("logo");
+  if (logo instanceof File && logo.size > 0) {
+    const ext = (logo.name.split(".").pop() ?? "bin").toLowerCase().replace(/[^a-z0-9]/g, "") || "bin";
+    const path = `${season}/${crypto.randomUUID()}.${ext}`;
+    const { error: upError } = await supabase.storage
+      .from("logos")
+      .upload(path, logo, { contentType: logo.type || "application/octet-stream" });
+    check(upError, "upload the logo");
+    await supabase.from("registrations").update({ logo_path: path }).eq("id", reg!.id);
+  }
+
+  done();
+  redirect(`/admin/registrations/${reg!.id}`);
+}
+
+/** Copies one past sign-up's logo onto this sign-up. */
+export async function copyLogoFrom(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const [{ data: to }, { data: from }] = await Promise.all([
+    supabase.from("registrations").select("id, season, logo_path").eq("id", str(formData, "id")).single(),
+    supabase.from("registrations").select("logo_path").eq("id", str(formData, "from_id")).single(),
+  ]);
+  if (!to || !from?.logo_path) throw new Error("Couldn't find that logo.");
+  await copyLogo(supabase, from.logo_path, to);
+  done();
+}
+
+/** For every sign-up in a season with no logo, copies the sponsor's most recent past logo. */
+export async function copyPastLogos(formData: FormData) {
+  const { supabase } = await requireAdmin();
+  const season = str(formData, "season", 50);
+  const [{ data: missing, error }, sources] = await Promise.all([
+    supabase
+      .from("registrations")
+      .select("id, season, email, company_name, logo_path")
+      .eq("season", season)
+      .is("logo_path", null)
+      .neq("status", "cancelled"),
+    getLogoSources(supabase),
+  ]);
+  check(error, "find sponsors without logos");
+  for (const reg of missing ?? []) {
+    const best = pastLogosFor(reg, sources)[0];
+    if (best) await copyLogo(supabase, best.logo_path, reg);
+  }
+  done();
+}
 
 export async function updateRegistration(formData: FormData) {
   const { supabase } = await requireAdmin();
