@@ -7,7 +7,7 @@ import { describeTiers } from "@/lib/discount";
 import { getBannerTiers } from "@/lib/discount-server";
 import { emailConfigured } from "@/lib/email";
 import { zelleQrUrl } from "@/lib/public-data";
-import { embedSnippet, requestOrigin } from "@/lib/site";
+import { embedSnippet, linkSnippet, requestOrigin } from "@/lib/site";
 import type { Package, Settings } from "@/lib/types";
 import {
   addAdmin,
@@ -226,22 +226,36 @@ export default async function SettingsPage(props: PageProps<"/admin/settings">) 
 
       <section className="card space-y-4">
         <div>
-          <h2 className="text-lg font-bold">Put the sign-up form on the league website</h2>
+          <h2 className="text-lg font-bold">Link from the league website</h2>
           <p className="text-sm text-muted">
-            Copy this into a custom HTML page on the Sports Connect site. The form appears without our header, and
-            after submitting, the sponsor sees their invoice right there, with a link to a printable copy. If the
-            site removes the &lt;script&gt; part, the form still works; it just keeps a fixed height with its own
-            scroll bar.{" "}
-            <a href="/embed" target="_blank" className="link">
-              Preview the embedded form ↗
-            </a>
+            Paste this into a custom HTML page on the Sports Connect site. It shows a &quot;Become a Sponsor&quot;
+            button (an image, so it looks right even if the site strips styling) with a plain text link under it,
+            both opening the sign-up form in a new tab.
           </p>
         </div>
-        <CopyBox text={embedSnippet(origin)} rows={10} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/sponsor-button.png" alt="Become a Sponsor button preview" width={320} height={64} />
+        <CopyBox text={linkSnippet(origin)} rows={3} />
         <p className="text-xs text-muted">
-          Uses {origin}. If the site moves to a new address (like sponsors.rwcll.org), copy the snippet again from
-          that address. The old one keeps working as long as the old address does.
+          Uses {origin}. Once the site has its own address (like sponsors.rwcll.org), copy this again from there.
+          The old link keeps working as long as the old address does.
         </p>
+
+        <details className="border-t border-line pt-3 text-sm">
+          <summary className="cursor-pointer font-medium">
+            Embed the whole form instead (only for websites that allow iframes)
+          </summary>
+          <div className="mt-3 space-y-3">
+            <p className="text-muted">
+              Sports Connect removes these, but other sites may not. Shows the form inside the page without our
+              header, sized to fit by the optional script.{" "}
+              <a href="/embed" target="_blank" className="link">
+                Preview ↗
+              </a>
+            </p>
+            <CopyBox text={embedSnippet(origin)} rows={10} />
+          </div>
+        </details>
       </section>
 
       <section className="card space-y-4">

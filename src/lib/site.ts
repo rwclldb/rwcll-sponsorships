@@ -41,3 +41,9 @@ export function embedSnippet(origin: string) {
 })();
 </script>`;
 }
+
+/** Plain HTML (a button image + text link) for sites that strip iframes and scripts. */
+export function linkSnippet(origin: string) {
+  return `<p><a href="${origin}/" target="_blank"><img src="${origin}/sponsor-button.png" alt="Become a Sponsor" width="320" height="64" /></a></p>
+<p><a href="${origin}/" target="_blank">Sign up to sponsor a team or banner</a></p>`;
+}
