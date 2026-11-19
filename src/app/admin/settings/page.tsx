@@ -1,4 +1,5 @@
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { CopyBox } from "@/components/CopyBox";
 import { FileDropzone } from "@/components/FileDropzone";
 import { getSeasons } from "@/lib/admin-data";
 import { requireAdmin } from "@/lib/auth";
@@ -6,6 +7,7 @@ import { describeTiers } from "@/lib/discount";
 import { getBannerTiers } from "@/lib/discount-server";
 import { emailConfigured } from "@/lib/email";
 import { zelleQrUrl } from "@/lib/public-data";
+import { embedSnippet, requestOrigin } from "@/lib/site";
 import type { Package, Settings } from "@/lib/types";
 import {
   addAdmin,
@@ -35,6 +37,7 @@ export default async function SettingsPage(props: PageProps<"/admin/settings">) 
   const otherSeasons = seasons.filter((s) => s !== pkgSeason);
   const tiers = await getBannerTiers(supabase, pkgSeason);
   const tierDescription = describeTiers(tiers);
+  const origin = await requestOrigin();
 
   return (
     <div className="space-y-6">
@@ -219,6 +222,26 @@ export default async function SettingsPage(props: PageProps<"/admin/settings">) 
           </p>
           <button className="btn-secondary">Save discount</button>
         </form>
+      </section>
+
+      <section className="card space-y-4">
+        <div>
+          <h2 className="text-lg font-bold">Put the sign-up form on the league website</h2>
+          <p className="text-sm text-muted">
+            Copy this into a custom HTML page on the Sports Connect site. The form appears without our header, and
+            after submitting, the sponsor sees their invoice right there, with a link to a printable copy. If the
+            site removes the &lt;script&gt; part, the form still works; it just keeps a fixed height with its own
+            scroll bar.{" "}
+            <a href="/embed" target="_blank" className="link">
+              Preview the embedded form ↗
+            </a>
+          </p>
+        </div>
+        <CopyBox text={embedSnippet(origin)} rows={10} />
+        <p className="text-xs text-muted">
+          Uses {origin}. If the site moves to a new address (like sponsors.rwcll.org), copy the snippet again from
+          that address. The old one keeps working as long as the old address does.
+        </p>
       </section>
 
       <section className="card space-y-4">

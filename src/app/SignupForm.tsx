@@ -7,7 +7,16 @@ import { money } from "@/lib/format";
 import type { Package } from "@/lib/types";
 import { submitRegistration, type SignupState } from "./actions";
 
-export function SignupForm({ packages, discountTiers }: { packages: Package[]; discountTiers: number[] }) {
+export function SignupForm({
+  packages,
+  discountTiers,
+  embedded,
+}: {
+  packages: Package[];
+  discountTiers: number[];
+  /** Shown inside the league website; keeps the sponsor in the embedded pages after submitting. */
+  embedded?: boolean;
+}) {
   const [state, formAction, pending] = useActionState<SignupState, FormData>(submitRegistration, {});
   const v = state.values ?? {};
   const [selected, setSelected] = useState<string[]>([]);
@@ -27,6 +36,7 @@ export function SignupForm({ packages, discountTiers }: { packages: Package[]; d
 
   return (
     <form action={formAction} className="mt-6 space-y-6">
+      {embedded && <input type="hidden" name="embed" value="1" />}
       {state.error && (
         <div role="alert" className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-800">
           {state.error}

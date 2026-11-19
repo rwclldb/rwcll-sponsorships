@@ -35,8 +35,11 @@ export async function submitRegistration(_prev: SignupState, formData: FormData)
   };
   const fail = (error: string): SignupState => ({ error, values });
 
+  // Embedded on the league website: stay in the embedded pages.
+  const base = formData.get("embed") === "1" ? "/embed" : "";
+
   // Bots fill in the hidden "website" field. Pretend it worked.
-  if (text(formData, "website")) redirect("/");
+  if (text(formData, "website")) redirect(base || "/");
 
   if (!values.company_name || !values.contact_name || !values.phone || !values.address) {
     return fail("Please fill in all of the required fields.");
@@ -160,5 +163,5 @@ export async function submitRegistration(_prev: SignupState, formData: FormData)
     ]);
   }
 
-  redirect(`/invoice/${reg.public_token}?new=1`);
+  redirect(`${base}/invoice/${reg.public_token}?new=1`);
 }

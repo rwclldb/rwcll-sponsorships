@@ -66,6 +66,14 @@ Security model:
 5. **Domain:** in Vercel add `sponsors.rwcll.org`, then add the CNAME record it shows at rwcll.org's DNS provider.
 6. **In the app:** go to Admin → Settings. Upload the Zelle QR code, check prices and payment instructions, add the notification emails, and turn on emails.
 
+## Sign-up form on the league (Sports Connect) website
+
+Admin → Settings → "Put the sign-up form on the league website" has a snippet to paste into a custom HTML page:
+
+- The snippet is an `<iframe>` of `/embed`, plus an optional script that sizes the frame to fit.
+- Sponsors stay on the league site: after submitting, they see their invoice in the same frame, with a link to the printable copy.
+- Only `/embed/...` pages can be shown inside other sites. Admin, login and the normal pages refuse to be framed (see `headers()` in `next.config.ts`).
+
 ## Admin passwords
 
 Admins can sign in with a password or an emailed code. To set someone's first password (or reset a forgotten one) without email:
