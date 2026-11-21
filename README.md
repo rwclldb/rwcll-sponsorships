@@ -66,6 +66,29 @@ Security model:
 5. **Domain:** in Vercel add `sponsors.rwcll.org`, then add the CNAME record it shows at rwcll.org's DNS provider.
 6. **In the app:** go to Admin → Settings. Upload the Zelle QR code, check prices and payment instructions, add the notification emails, and turn on emails.
 
+## Email
+
+The app can send two emails per sign-up, each with its own switch in Admin → Settings → Emails:
+- **New-sponsor alert:** every detail of the sign-up, sent to any list of addresses (they don't need to be admins).
+- **Thank-you to the sponsor:** links to their invoice. Replies go to the alert recipients.
+
+"Send a test alert" checks the setup. Sending needs one of these, set in Vercel → Settings → Environment Variables, followed by a redeploy:
+
+**Option A: a Google / Gmail account (simplest, free, about 500 emails a day)**
+1. Use a league Google account (e.g. `sponsors@rwcll.org`). It needs 2-Step Verification turned on.
+2. Go to Google Account → Security → App passwords, and create one for "RWCLL Sponsorships".
+3. Set these variables:
+   - `SMTP_HOST=smtp.gmail.com`
+   - `SMTP_PORT=465`
+   - `SMTP_USER=sponsors@rwcll.org`
+   - `SMTP_PASS=<the 16-letter app password>`
+   - optionally `EMAIL_FROM="RWCLL Sponsorships <sponsors@rwcll.org>"`, which must be that account or one of its aliases
+
+**Option B: Resend (free tier; needs DNS records on rwcll.org)**
+- Set `RESEND_API_KEY` and `EMAIL_FROM`.
+
+Locally, emails can go to Mailpit (http://127.0.0.1:55324) by running with `SMTP_HOST=127.0.0.1 SMTP_PORT=55325 SMTP_USER=x SMTP_PASS=x`.
+
 ## Sign-up form on the league (Sports Connect) website
 
 Admin → Settings → "Put the sign-up form on the league website" has a snippet to paste into a custom HTML page:

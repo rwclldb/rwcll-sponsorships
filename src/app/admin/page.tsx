@@ -26,6 +26,9 @@ export default async function AdminHome(props: PageProps<"/admin">) {
   const season = typeof sp.season === "string" && sp.season ? sp.season : currentSeason;
   const filter = typeof sp.filter === "string" ? sp.filter : "";
   const q = typeof sp.q === "string" ? sp.q.trim().toLowerCase() : "";
+  // Division/banner filter (package name) and sort order: number | -number | name | -name.
+  const pkg = typeof sp.pkg === "string" ? sp.pkg : "";
+  const sort = typeof sp.sort === "string" && /^-?(number|name)$/.test(sp.sort) ? sp.sort : "-number";
 
   const [all, seasons, logoSources, links] = await Promise.all([
     getRegistrations(supabase, season),
@@ -47,12 +50,19 @@ export default async function AdminHome(props: PageProps<"/admin">) {
     if (filter === "paid" && pay !== "paid" && pay !== "overpaid") return false;
     if (filter === "nologo" && r.logo_path) return false;
     if (filter === "help" && !r.needs_division_help) return false;
+    if (pkg && !r.registration_items.some((i) => i.name === pkg)) return false;
     if (q) {
       const hay = `${r.company_name} ${r.contact_name} ${r.email} ${r.phone}`.toLowerCase();
       if (!hay.includes(q)) return false;
     }
     return true;
   });
+  const dir = sort.startsWith("-") ? -1 : 1;
+  rows.sort((a, b) =>
+    sort.endsWith("name")
+      ? dir * a.company_name.localeCompare(b.company_name, undefined, { sensitivity: "base", numeric: true })
+      : dir * (a.number - b.number),
+  );
 
   const pledged = active.reduce((s, r) => s + r.total_cents, 0);
   const received = active.reduce((s, r) => s + r.paid_cents, 0);
@@ -70,7 +80,14 @@ export default async function AdminHome(props: PageProps<"/admin">) {
   const helpCount = active.filter((r) => r.needs_division_help).length;
 
   const qs = (extra: Record<string, string>) => {
-    const p = new URLSearchParams({ season, ...(filter && { filter }), ...(q && { q }), ...extra });
+    const p = new URLSearchParams({
+      season,
+      ...(filter && { filter }),
+      ...(q && { q }),
+      ...(pkg && { pkg }),
+      ...(sort !== "-number" && { sort }),
+      ...extra,
+    });
     for (const [k, v] of [...p.entries()]) if (!v) p.delete(k);
     return `?${p}`;
   };
@@ -123,9 +140,16 @@ export default async function AdminHome(props: PageProps<"/admin">) {
             {[...counts.entries()]
               .sort((a, b) => a[0].localeCompare(b[0]))
               .map(([name, n]) => (
-                <span key={name} className="rounded-md bg-paper px-2 py-1">
+                <Link
+                  key={name}
+                  href={qs({ pkg: pkg === name ? "" : name })}
+                  title={pkg === name ? "Show all divisions" : `Show only ${name} sponsors`}
+                  className={`rounded-md px-2 py-1 ${
+                    pkg === name ? "bg-brand text-white" : "bg-paper hover:bg-brand/10"
+                  }`}
+                >
                   {name}: <strong>{n}</strong>
-                </span>
+                </Link>
               ))}
             {helpCount > 0 && (
               <Link href={qs({ filter: "help" })} className="rounded-md bg-amber-100 px-2 py-1">
@@ -148,12 +172,39 @@ export default async function AdminHome(props: PageProps<"/admin">) {
             {f.label}
           </Link>
         ))}
-        <form className="ml-auto">
+        <form className="ml-auto flex flex-wrap items-center gap-2">
           <input type="hidden" name="season" value={season} />
           {filter && <input type="hidden" name="filter" value={filter} />}
-          <input name="q" defaultValue={q} placeholder="Search name, email, phone" className="input w-64 py-1.5" />
+          {sort !== "-number" && <input type="hidden" name="sort" value={sort} />}
+          <select name="pkg" defaultValue={pkg} aria-label="Division or banner" className="input w-auto py-1.5">
+            <option value="">All divisions &amp; banners</option>
+            {[...counts.keys()]
+              .sort((a, b) => a.localeCompare(b))
+              .map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+          </select>
+          <input name="q" defaultValue={q} placeholder="Search name, email, phone" className="input w-56 py-1.5" />
+          <button className="btn-secondary py-1.5">Filter</button>
         </form>
       </div>
+      {(pkg || q || filter) && (
+        <p className="-mt-3 text-sm text-muted">
+          Showing {rows.length} of {active.length} sponsors
+          {pkg && (
+            <>
+              {" "}
+              with <strong>{pkg}</strong>
+            </>
+          )}
+          .{" "}
+          <Link href={`?season=${encodeURIComponent(season)}${sort !== "-number" ? `&sort=${sort}` : ""}`} className="link">
+            Clear filters
+          </Link>
+        </p>
+      )}
 
       {copyableCount > 0 && (
         <form
@@ -178,8 +229,8 @@ export default async function AdminHome(props: PageProps<"/admin">) {
         <table className="table">
           <thead>
             <tr>
-              <th>#</th>
-              <th>Sponsor</th>
+              <SortHeader label="#" field="number" sort={sort} href={qs} />
+              <SortHeader label="Sponsor" field="name" sort={sort} href={qs} />
               <th>Sponsoring</th>
               <th className="text-right">Total</th>
               <th>Payment</th>
@@ -248,3 +299,32 @@ function Stat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+/** A column header that sorts by its field; clicking again reverses the order. */
+function SortHeader({
+  label,
+  field,
+  sort,
+  href,
+}: {
+  label: string;
+  field: "number" | "name";
+  sort: string;
+  href: (extra: Record<string, string>) => string;
+}) {
+  const active = sort.replace("-", "") === field;
+  const desc = sort.startsWith("-");
+  // First click: # newest first, names A→Z. Clicking the active column flips it.
+  const next = active ? (desc ? field : `-${field}`) : field === "number" ? "-number" : "name";
+  return (
+    <th aria-sort={active ? (desc ? "descending" : "ascending") : "none"}>
+      <Link href={href({ sort: next === "-number" ? "" : next })} className="inline-flex items-center gap-1 hover:text-ink">
+        {label}
+        <span aria-hidden="true" className={active ? "text-ink" : "opacity-30"}>
+          {active ? (desc ? "▼" : "▲") : "↕"}
+        </span>
+      </Link>
+    </th>
+  );
+}
+

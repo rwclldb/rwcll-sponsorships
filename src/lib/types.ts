@@ -13,7 +13,10 @@ export type Package = {
 export type Settings = {
   current_season: string;
   registration_open: boolean;
+  /** Send new-sponsor alerts to notify_emails. */
   email_notifications: boolean;
+  /** Send the sponsor a thank-you email (may be missing until the migration runs). */
+  notify_sponsor?: boolean;
   notify_emails: string;
   payment_instructions: string;
   zelle_qr_path: string | null;

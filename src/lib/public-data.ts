@@ -7,9 +7,8 @@ export async function getSettings(): Promise<Settings> {
   const db = createServiceClient();
   const { data, error } = await db
     .from("settings")
-    .select(
-      "current_season, registration_open, email_notifications, notify_emails, payment_instructions, zelle_qr_path",
-    )
+    // "*" so a newly added column never breaks the public form before its migration runs.
+    .select("*")
     .eq("id", 1)
     .single();
   if (error) throw error;

@@ -14,6 +14,7 @@ import {
   copyPackages,
   removeAdmin,
   saveBannerDiscount,
+  sendTestAlert,
   saveSettings,
   savePackage,
   setMyPassword,
@@ -22,7 +23,8 @@ import {
 
 export default async function SettingsPage(props: PageProps<"/admin/settings">) {
   const { supabase, email: me } = await requireAdmin();
-  const { password: passwordStatus, season: seasonParam } = await props.searchParams;
+  const { password: passwordStatus, season: seasonParam, email_test: emailTest } = await props.searchParams;
+  const testResult = typeof emailTest === "string" ? emailTest : null;
   const { data: settings } = await supabase.from("settings").select("*").eq("id", 1).single<Settings>();
   if (!settings) throw new Error("Settings row is missing");
 
@@ -71,6 +73,24 @@ export default async function SettingsPage(props: PageProps<"/admin/settings">) 
             Sign-up form is open
           </label>
           <div>
+            <h3 id="email" className="mb-2 font-semibold">Emails</h3>
+            {!emailConfigured() && (
+              <p className="mb-2 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+                Email sending isn&apos;t set up on the server yet, so no emails will go out. See &quot;Email&quot; in
+                the README (a Gmail app password or Resend).
+              </p>
+            )}
+            {testResult && (
+              <p
+                className={`mb-2 rounded-md p-3 text-sm ${
+                  testResult.startsWith("ok:") ? "bg-brand/10 text-brand-dark" : "bg-red-50 text-red-800"
+                }`}
+              >
+                {testResult.startsWith("ok:")
+                  ? `Test alert sent to ${testResult.slice(3)}. Check those inboxes (and spam folders).`
+                  : `Test failed: ${testResult.slice(6)}`}
+              </p>
+            )}
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -78,17 +98,12 @@ export default async function SettingsPage(props: PageProps<"/admin/settings">) 
                 defaultChecked={settings.email_notifications}
                 className="size-4 accent-brand"
               />
-              Send emails (a thank-you to the sponsor, and a &quot;new sponsor&quot; alert to the addresses below)
+              Email a &quot;new sponsor&quot; alert with all the sign-up details to the people below
             </label>
-            {!emailConfigured() && (
-              <p className="mt-1 ml-6 text-sm text-amber-800">
-                Email sending isn&apos;t set up on the server yet (RESEND_API_KEY), so no emails will go out.
-              </p>
-            )}
           </div>
-          <div>
+          <div className="ml-6">
             <label className="label" htmlFor="notify_emails">
-              Send new-sponsor alerts to
+              Alert recipients (anyone, not just admins; separate with commas)
             </label>
             <input
               id="notify_emails"
@@ -97,7 +112,19 @@ export default async function SettingsPage(props: PageProps<"/admin/settings">) 
               placeholder="sponsors@rwcll.org, treasurer@rwcll.org"
               className="input"
             />
+            <button formAction={sendTestAlert} formNoValidate className="btn-secondary mt-2 py-1.5 text-sm">
+              Send a test alert to these addresses
+            </button>
           </div>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="notify_sponsor"
+              defaultChecked={Boolean(settings.notify_sponsor)}
+              className="size-4 accent-brand"
+            />
+            Email the sponsor a thank-you with a link to their invoice (replies go to the alert recipients)
+          </label>
           <div>
             <label className="label" htmlFor="payment_instructions">
               Payment instructions (shown on the invoice)

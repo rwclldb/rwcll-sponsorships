@@ -1,10 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { escapeHtml, sendEmail } from "@/lib/email";
+import { parseEmailList, sendEmail } from "@/lib/email";
+import { newSponsorAlert, sponsorThankYou } from "@/lib/email-templates";
 import { bannerDiscount, discountLabel } from "@/lib/discount";
 import { getBannerTiers } from "@/lib/discount-server";
-import { invoiceNumber, money } from "@/lib/format";
+import { invoiceNumber } from "@/lib/format";
 import { getActivePackages, getSettings } from "@/lib/public-data";
 import { siteUrl } from "@/lib/site";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -96,7 +97,7 @@ export async function submitRegistration(_prev: SignupState, formData: FormData)
       needs_division_help: needsDivisionHelp,
       logo_path: logoPath,
     })
-    .select("id, number, public_token")
+    .select("id, number, public_token, created_at")
     .single();
 
   if (regError || !reg) {
@@ -127,39 +128,40 @@ export async function submitRegistration(_prev: SignupState, formData: FormData)
     }
   }
 
-  if (settings.email_notifications) {
-    const base = await siteUrl();
-    const invoiceUrl = `${base}/invoice/${reg.public_token}`;
-    const total = packages.reduce((sum, p) => sum + p.price_cents, 0) - discount;
-    const lines =
-      packages.map((p) => `<li>${escapeHtml(p.name)} — ${money(p.price_cents)}</li>`).join("") +
-      (discount > 0 ? `<li>${escapeHtml(discountLabel(packages))} — −${money(discount)}</li>` : "");
-    const helpLine = needsDivisionHelp ? "<li>Team sponsorship, division to be decided</li>" : "";
-    const number = invoiceNumber(season, reg.number);
-
+  const alertTo = settings.email_notifications ? parseEmailList(settings.notify_emails) : [];
+  if (alertTo.length || settings.notify_sponsor) {
+    const site = await siteUrl();
+    const data = {
+      season,
+      number: invoiceNumber(season, reg.number),
+      createdAt: reg.created_at,
+      companyName: values.company_name,
+      contactName: values.contact_name,
+      email: values.email,
+      phone: values.phone,
+      address: values.address,
+      playerInfo: hasPlayer ? values.player_info : null,
+      needsDivisionHelp,
+      items: [
+        ...packages.map((p) => ({ kind: p.kind, name: p.name, price_cents: p.price_cents })),
+        ...(discount > 0 ? [{ kind: "discount", name: discountLabel(packages), price_cents: -discount }] : []),
+      ],
+      totalCents: packages.reduce((sum, p) => sum + p.price_cents, 0) - discount,
+      hasLogo: Boolean(logoPath),
+      adminUrl: `${site}/admin/registrations/${reg.id}`,
+      invoiceUrl: `${site}/invoice/${reg.public_token}`,
+    };
+    // Emails never block the sign-up; failures are logged.
     await Promise.all([
-      sendEmail({
-        to: [values.email],
-        subject: `Thank you for sponsoring Redwood City Little League (#${number})`,
-        html: `<p>Hi ${escapeHtml(values.contact_name)},</p>
-<p>Thank you for sponsoring Redwood City Little League for the ${escapeHtml(season)} season! We received your registration for <strong>${escapeHtml(values.company_name)}</strong>:</p>
-<ul>${lines}${helpLine}</ul>
-<p><strong>Total: ${money(total)}</strong></p>
-<p><a href="${invoiceUrl}">View your invoice and payment instructions</a></p>
-<p>Thank you,<br>Redwood City Little League</p>`,
-      }),
-      sendEmail({
-        to: settings.notify_emails
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-        replyTo: values.email,
-        subject: `New sponsor: ${values.company_name} (${money(total)})`,
-        html: `<p><strong>${escapeHtml(values.company_name)}</strong> signed up as a sponsor.</p>
-<ul>${lines}${helpLine}</ul>
-<p>Contact: ${escapeHtml(values.contact_name)}, ${escapeHtml(values.email)}, ${escapeHtml(values.phone)}</p>
-<p><a href="${base}/admin/registrations/${reg.id}">Open in the admin page</a></p>`,
-      }),
+      alertTo.length ? sendEmail({ to: alertTo, replyTo: values.email, ...newSponsorAlert(data) }) : null,
+      settings.notify_sponsor
+        ? sendEmail({
+            to: [values.email],
+            // Sponsor replies (e.g. with their logo) go to the people who get the alerts.
+            replyTo: alertTo.length ? alertTo.join(", ") : undefined,
+            ...sponsorThankYou(data),
+          })
+        : null,
     ]);
   }
 

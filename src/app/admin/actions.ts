@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
-import { parseMoney } from "@/lib/format";
+import { parseEmailList, sendEmailDetailed } from "@/lib/email";
+import { newSponsorAlert } from "@/lib/email-templates";
+import { invoiceNumber, parseMoney } from "@/lib/format";
+import { requestOrigin } from "@/lib/site";
 import { syncDiscount } from "@/lib/discount-server";
 import { getSponsorLinks } from "@/lib/links";
 import { copyLogo, getLogoSources, pastLogosFor } from "@/lib/logos";
@@ -280,7 +283,9 @@ export async function saveSettings(formData: FormData) {
       current_season: season,
       registration_open: formData.get("registration_open") === "on",
       email_notifications: formData.get("email_notifications") === "on",
-      notify_emails: str(formData, "notify_emails", 1000),
+      notify_sponsor: formData.get("notify_sponsor") === "on",
+      // Store a tidy list: valid addresses only, comma-separated.
+      notify_emails: parseEmailList(str(formData, "notify_emails", 2000)).join(", "),
       payment_instructions: str(formData, "payment_instructions", 5000),
     })
     .eq("id", 1);
@@ -439,5 +444,47 @@ export async function unlinkSponsor(formData: FormData) {
     }
   }
   done();
+}
+
+/** Sends a sample new-sponsor alert to the addresses currently in the box (saved or not). */
+export async function sendTestAlert(formData: FormData) {
+  await requireAdmin();
+  const to = parseEmailList(str(formData, "notify_emails", 2000));
+  let result: string;
+  if (to.length === 0) {
+    result = "error:Add at least one email address to send the test to.";
+  } else {
+    const site = await requestOrigin();
+    const season = str(formData, "current_season", 50) || "2027";
+    const sent = await sendEmailDetailed({
+      to,
+      ...(() => {
+        const t = newSponsorAlert({
+          season,
+          number: invoiceNumber(season, 0),
+          createdAt: new Date().toISOString(),
+          companyName: "Example Pizza Co (TEST, not a real sign-up)",
+          contactName: "Pat Example",
+          email: "pat@example.com",
+          phone: "650-555-0100",
+          address: "123 Main St\nRedwood City, CA 94061",
+          playerInfo: "Sam Example, AAA",
+          needsDivisionHelp: false,
+          items: [
+            { kind: "team", name: "AAA team", price_cents: 60000 },
+            { kind: "banner", name: "Kiwanis banner", price_cents: 50000 },
+            { kind: "discount", name: "Banner discount (sponsoring 1 team)", price_cents: -5000 },
+          ],
+          totalCents: 105000,
+          hasLogo: true,
+          adminUrl: `${site}/admin`,
+          invoiceUrl: `${site}/`,
+        });
+        return { ...t, subject: `[TEST] ${t.subject}` };
+      })(),
+    });
+    result = sent.ok ? `ok:${to.join(", ")}` : `error:${sent.error}`;
+  }
+  redirect(`/admin/settings?email_test=${encodeURIComponent(result)}#email`);
 }
 
